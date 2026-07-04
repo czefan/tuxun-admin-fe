@@ -1,0 +1,19 @@
+@import './reset.css';
+@import './nprogress.css';
+@import './transition.css';
+
+html,
+body,
+#app {
+  height: 100%;
+  text-autospace: normal;
+}
+
+html {
+  overflow-x: hidden;
+  color: rgb(var(--base-text-color));
+}
+
+.resizable-data-table .n-data-table-table {
+  width: max(var(--table-scroll-x), 100%) !important;
+}
