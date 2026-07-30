@@ -18,6 +18,16 @@
     "rootDir": ".",
     "baseUrl": "."
   },
+  "prettier.enable": false,
+  "[vue]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode"
+  },
   "oxc.fmt.configPath": ".oxfmtrc.json",
   "unocss.root": ["./"]
 }

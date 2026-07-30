@@ -16,7 +16,7 @@
   "homepage": "",
   "bugs": {},
   "license": "MIT",
-  "author": {},
+  "author": "Tuxun Team",
   "repository": {
     "url": ""
   },
@@ -28,6 +28,7 @@
     "commit": "sa git-commit",
     "commit:zh": "sa git-commit -l=zh-cn",
     "dev": "vite --mode test",
+    "dev:mock": "vite --mode mock",
     "dev:prod": "vite --mode prod",
     "fmt": "oxfmt",
     "gen-route": "sa gen-route",
@@ -39,6 +40,7 @@
     "update-pkg": "sa update-pkg"
   },
   "dependencies": {
+    "@amap/amap-jsapi-loader": "^1.0.1",
     "@better-scroll/core": "2.5.1",
     "@iconify/vue": "5.0.1",
     "@sa/axios": "workspace:*",
@@ -46,12 +48,16 @@
     "@sa/hooks": "workspace:*",
     "@sa/materials": "workspace:*",
     "@sa/utils": "workspace:*",
+    "@tiptap/extension-image": "^3.28.0",
+    "@tiptap/extension-placeholder": "^3.28.0",
+    "@tiptap/starter-kit": "^3.28.0",
+    "@tiptap/vue-3": "^3.28.0",
     "@vueuse/core": "14.3.0",
     "clipboard": "2.0.11",
     "dayjs": "1.11.20",
     "defu": "6.1.7",
+    "dompurify": "^3.4.12",
     "echarts": "6.0.0",
-    "json5": "2.2.3",
     "naive-ui": "2.44.1",
     "nprogress": "0.2.0",
     "pinia": "3.0.4",
@@ -62,6 +68,7 @@
     "vue-router": "5.0.7"
   },
   "devDependencies": {
+    "@amap/amap-jsapi-types": "^0.0.15",
     "@elegant-router/vue": "0.3.8",
     "@iconify/json": "2.2.472",
     "@oxc-parser/binding-linux-x64-gnu": "0.124.0",
@@ -75,6 +82,7 @@
     "consola": "3.4.2",
     "eslint": "10.3.0",
     "kolorist": "1.8.0",
+    "msw": "^2.15.0",
     "oxfmt": "^0.49.0",
     "oxlint": "^1.64.0",
     "sass": "1.99.0",
@@ -98,6 +106,11 @@
   "engines": {
     "node": ">=20.19.0",
     "pnpm": ">=10.5.0"
+  },
+  "msw": {
+    "workerDirectory": [
+      "src/mocks/public"
+    ]
   },
   "website": ""
 }

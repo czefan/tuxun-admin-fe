@@ -35,7 +35,7 @@ yarn.lock
 .VSCodeCounter
 src-tauri/target
 
-# Agentic coding files
-.agents
-.codex
-
+.agents/
+.codex/
+.claude/
+/tmp/

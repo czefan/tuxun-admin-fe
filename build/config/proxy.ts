@@ -1,7 +1,7 @@
 import type { ProxyOptions } from 'vite';
 import { bgRed, bgYellow, green, lightBlue } from 'kolorist';
 import { consola } from 'consola';
-import { createServiceConfig } from '../../src/utils/service';
+import { PROXY_PATTERN } from '../../src/utils/service';
 
 /**
  * Set http proxy
@@ -10,46 +10,44 @@ import { createServiceConfig } from '../../src/utils/service';
  * @param enable - If enable http proxy
  */
 export function createViteProxy(env: Env.ImportMeta, enable: boolean) {
-  const isEnableHttpProxy = enable && env.VITE_HTTP_PROXY === 'Y';
+  if (!enable || env.VITE_HTTP_PROXY !== 'Y') return undefined;
 
-  if (!isEnableHttpProxy) return undefined;
+  const baseURL = env.VITE_SERVICE_BASE_URL;
+  const enableLog = env.VITE_PROXY_LOG === 'Y';
 
-  const isEnableProxyLog = env.VITE_PROXY_LOG === 'Y';
+  // baseURL 是相对路径时按原路径转发，保持浏览器同源以便 Cookie 正常携带
+  if (baseURL.startsWith('/')) {
+    if (!env.VITE_SERVICE_PROXY_TARGET) return undefined;
+    return createProxyItem(baseURL, env.VITE_SERVICE_PROXY_TARGET, enableLog);
+  }
 
-  const { baseURL, proxyPattern, other } = createServiceConfig(env);
-
-  const proxy: Record<string, ProxyOptions> = createProxyItem({ baseURL, proxyPattern }, isEnableProxyLog);
-
-  other.forEach(item => {
-    Object.assign(proxy, createProxyItem(item, isEnableProxyLog));
-  });
-
-  return proxy;
+  // baseURL 是绝对地址时，浏览器改请求 PROXY_PATTERN 前缀，这里剥掉前缀转发到真实地址
+  return createProxyItem(PROXY_PATTERN, baseURL, enableLog, true);
 }
 
-function createProxyItem(item: App.Service.ServiceConfigItem, enableLog: boolean) {
-  const proxy: Record<string, ProxyOptions> = {};
-
-  proxy[item.proxyPattern] = {
-    target: item.baseURL,
+function createProxyItem(pattern: string, target: string, enableLog: boolean, stripPattern = false) {
+  const options: ProxyOptions = {
+    target,
     changeOrigin: true,
-    configure: (_proxy, options) => {
-      _proxy.on('proxyReq', (_proxyReq, req, _res) => {
+    configure: (proxy, opts) => {
+      proxy.on('proxyReq', (_proxyReq, req) => {
         if (!enableLog) return;
 
-        const requestUrl = `${lightBlue('[proxy url]')}: ${bgYellow(` ${req.method} `)} ${green(`${item.proxyPattern}${req.url}`)}`;
-
-        const proxyUrl = `${lightBlue('[real request url]')}: ${green(`${options.target}${req.url}`)}`;
-
-        consola.log(`${requestUrl}\n${proxyUrl}`);
+        consola.log(
+          `${lightBlue('[proxy url]')}: ${bgYellow(` ${req.method} `)} ${green(req.url || '')}\n` +
+            `${lightBlue('[real request url]')}: ${green(`${opts.target}${req.url || ''}`)}`
+        );
       });
-      _proxy.on('error', (_err, req, _res) => {
+      proxy.on('error', (_err, req) => {
         if (!enableLog) return;
-        consola.log(bgRed(`Error: ${req.method} `), green(`${options.target}${req.url}`));
+        consola.log(bgRed(`Error: ${req.method} `), green(req.url || ''));
       });
-    },
-    rewrite: path => path.replace(new RegExp(`^${item.proxyPattern}`), '')
+    }
   };
 
-  return proxy;
+  if (stripPattern) {
+    options.rewrite = path => path.replace(new RegExp(`^${pattern}`), '');
+  }
+
+  return { [pattern]: options } satisfies Record<string, ProxyOptions>;
 }

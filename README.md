@@ -72,27 +72,28 @@ pnpm fmt   # 自动格式化代码
 
 ### 1. 后端接口切换
 
-开发环境下，如果要切换到本地或特定的图寻后台服务，请修改 `.env.test` 中的 `VITE_SERVICE_BASE_URL`：
+开发与生产统一使用同域 Cookie Session 认证，所有 API 统一通过 `/api` 基础路径发起代理或直接请求：
 
 ```env
-VITE_SERVICE_BASE_URL=http://localhost:8080/admin-api
+VITE_SERVICE_BASE_URL=/api
 ```
 
-### 2. 接口封装规范
+### 2. 接口契约规范
 
-从 `src/service/request` 导出的 `request` 实例是一个 Flat Request，接口响应格式如下：
+接口响应规范严格以权威 Apifox 契约（`apifox-import.json`）为准，标准结构如下：
 
 ```ts
 interface ApiResponse<T> {
+  success: boolean;
+  resp: T;
+  message: string;
   code: number;
-  msg: string;
-  data: T;
 }
 ```
 
-- **请求拦截**：发送请求时会自动添加 `Authorization: Bearer <token>` 请求头。
-- **成功标识**：请求成功条件可通过 `.env` 中 `VITE_SERVICE_SUCCESS_CODE` 控制，默认为 `0`。
-- **登录失效**：遇到特定退出状态码（如 `401`，配置于 `VITE_SERVICE_LOGOUT_CODES`）会自动清理本地登录状态并跳转回登录页面。
+- **认证方式**：基于同域 Session Cookie。前端不保存/发送 Token。
+- **业务成功标识**：`success === true` 且 `code === 0`，数据存放在 `resp` 字段中。
+- **登录与权限**：HTTP 401 自动导航至登录页，HTTP 403 导航至 403 无权限页（仅 Level 2 及以上允许使用后台）。
 
 ---
 

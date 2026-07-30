@@ -8,6 +8,7 @@ import { setupUnocss } from './unocss';
 import { setupUnplugin } from './unplugin';
 import { setupHtmlPlugin } from './html';
 import { setupDevtoolsPlugin } from './devtools';
+import { setupMockPublicPlugin } from './mock-public';
 
 export function setupVitePlugins(viteEnv: Env.ImportMeta, buildTime: string) {
   const plugins: PluginOption = [
@@ -17,6 +18,7 @@ export function setupVitePlugins(viteEnv: Env.ImportMeta, buildTime: string) {
     setupElegantRouter(),
     setupUnocss(viteEnv),
     ...setupUnplugin(viteEnv),
+    ...setupMockPublicPlugin(viteEnv),
     progress(),
     setupHtmlPlugin(buildTime),
     vueRootValidator()

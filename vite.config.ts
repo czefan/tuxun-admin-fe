@@ -7,6 +7,10 @@ import { createViteProxy, getBuildTime } from './build/config';
 export default defineConfig(configEnv => {
   const viteEnv = loadEnv(configEnv.mode, process.cwd()) as unknown as Env.ImportMeta;
 
+  if ((configEnv.mode === 'prod' || configEnv.mode === 'production') && viteEnv.VITE_ENABLE_MOCK === 'Y') {
+    throw new Error('BUILD_ERROR: Mock is strictly prohibited in production mode!');
+  }
+
   const buildTime = getBuildTime();
 
   const enableProxy = configEnv.command === 'serve' && !configEnv.isPreview;

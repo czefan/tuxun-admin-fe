@@ -4,106 +4,55 @@ import ElegantVueRouter from '@elegant-router/vue/vite';
 export function setupElegantRouter() {
   const routeMetaMap: Record<string, Partial<RouteMeta>> = {
     home: { icon: 'mdi:view-dashboard-outline', order: 1 },
+
     review: { icon: 'mdi:clipboard-check-outline', order: 2 },
-    review_question: { icon: 'mdi:image-check-outline', order: 1 },
-    review_answer: { icon: 'mdi:map-check-outline', order: 2 },
-    activity: { icon: 'mdi:calendar-month-outline', order: 3 },
-    activity_list: { icon: 'mdi:calendar-clock-outline', order: 2 },
-    'activity_list-create': {
+    review_photos: { icon: 'mdi:image-check-outline', order: 1 },
+    review_attempts: { icon: 'mdi:map-check-outline', order: 2 },
+    review_comments: { icon: 'mdi:comment-alert-outline', order: 3 },
+
+    operation: { icon: 'mdi:calendar-month-outline', order: 3 },
+    operation_activities: { icon: 'mdi:calendar-clock-outline', order: 1 },
+    'operation_activity-form': {
       icon: 'mdi:calendar-plus-outline',
       hideInMenu: true,
-      activeMenu: 'activity_list'
+      activeMenu: 'operation_activities'
     },
-    'activity_list-question': {
-      icon: 'mdi:format-list-bulleted-square',
+    operation_notice: { icon: 'mdi:bell-outline', order: 2 },
+    'operation_notice-form': {
+      icon: 'mdi:bell-ring-outline',
       hideInMenu: true,
-      activeMenu: 'activity_list'
+      activeMenu: 'operation_notice'
     },
-    'activity_list-question-detail': {
-      icon: 'mdi:format-list-bulleted-square',
+    'operation_notice-detail': {
+      icon: 'mdi:bell-outline',
       hideInMenu: true,
-      activeMenu: 'activity_list',
-      breadcrumbRoutes: ['activity_list-question']
+      activeMenu: 'operation_notice'
     },
-    activity_question: { icon: 'mdi:camera-plus-outline', order: 1 },
-    'activity_question-create': {
-      icon: 'mdi:camera-plus-outline',
-      hideInMenu: true,
-      activeMenu: 'activity_question'
+    operation_questions: {
+      icon: 'mdi:image-multiple-outline',
+      order: 0
     },
-    'activity_question-detail': {
-      icon: 'mdi:camera-plus-outline',
-      hideInMenu: true,
-      activeMenu: 'activity_question'
-    },
-    mall: { icon: 'mdi:storefront-outline', order: 4 },
-    mall_product: { icon: 'mdi:package-variant-closed', order: 1 },
-    'mall_product-create': {
-      icon: 'mdi:package-variant-plus',
-      hideInMenu: true,
-      activeMenu: 'mall_product'
-    },
-    'mall_product-detail': {
-      icon: 'mdi:package-variant-closed',
-      hideInMenu: true,
-      activeMenu: 'mall_product'
-    },
-    mall_redemption: { icon: 'mdi:ticket-confirmation-outline', order: 2 },
-    mall_rules: { icon: 'mdi:format-list-checks', order: 3 },
-    'mall_rules-diff': {
-      icon: 'mdi:format-list-checks',
-      hideInMenu: true,
-      activeMenu: 'mall_rules'
-    },
-    notice: { icon: 'mdi:bell-outline', order: 5 },
-    notice_list: { icon: 'mdi:bell-badge-outline', order: 1 },
-    'notice_list-create': {
-      icon: 'mdi:bell-plus-outline',
-      hideInMenu: true,
-      activeMenu: 'notice_list'
-    },
-    'notice_list-detail': {
-      icon: 'mdi:bell-badge-outline',
-      hideInMenu: true,
-      activeMenu: 'notice_list'
-    },
-    content: { icon: 'mdi:comment-text-multiple-outline', order: 6 },
-    content_feedback: { icon: 'mdi:message-alert-outline', order: 1 },
-    'content_feedback-detail': {
+    operation_feedback: { icon: 'mdi:message-alert-outline', order: 3 },
+    'operation_feedback-detail': {
       icon: 'mdi:message-alert-outline',
       hideInMenu: true,
-      activeMenu: 'content_feedback'
+      activeMenu: 'operation_feedback'
     },
-    content_help: { icon: 'mdi:help-circle-outline', order: 2 },
-    'content_help-create': {
-      icon: 'mdi:help-circle-outline',
+    operation_other: { icon: 'mdi:dots-horizontal-circle-outline', order: 4 },
+
+    mall: { icon: 'mdi:storefront-outline', order: 4 },
+    mall_goods: { icon: 'mdi:package-variant-closed', order: 1 },
+    'mall_good-form': {
+      icon: 'mdi:package-variant-plus',
       hideInMenu: true,
-      activeMenu: 'content_help'
+      activeMenu: 'mall_goods'
     },
-    'content_help-diff': {
-      icon: 'mdi:help-circle-outline',
-      hideInMenu: true,
-      activeMenu: 'content_help'
-    },
-    content_about: { icon: 'mdi:information-outline', order: 3 },
-    'content_about-edit': {
-      icon: 'mdi:information-outline',
-      hideInMenu: true,
-      activeMenu: 'content_about'
-    },
-    'content_about-diff': {
-      icon: 'mdi:information-outline',
-      hideInMenu: true,
-      activeMenu: 'content_about'
-    },
-    content_comment: { icon: 'mdi:comment-alert-outline', order: 4 },
-    user: { icon: 'mdi:account-group-outline', order: 7 },
-    user_list: { icon: 'mdi:account-multiple-outline', order: 1 },
-    'user_list-detail': {
-      icon: 'mdi:account-details-outline',
-      hideInMenu: true,
-      activeMenu: 'user_list'
-    }
+    mall_exchange: { icon: 'mdi:ticket-confirmation-outline', order: 2 },
+
+    system: { icon: 'mdi:cog-outline', order: 5 },
+    system_users: { icon: 'mdi:account-group-outline', order: 1 },
+
+    'login-callback': { hideInMenu: true }
   };
 
   return ElegantVueRouter({
@@ -115,13 +64,16 @@ export function setupElegantRouter() {
       if (routeName === 'login') {
         return '/login';
       }
+      if (routeName === 'login_callback' || routeName === 'login-callback') {
+        return '/login/callback';
+      }
 
       return routePath;
     },
     onRouteMetaGen(routeName) {
       const key = routeName as string;
 
-      const constantRoutes = ['login', '403', '404', '500'];
+      const constantRoutes = ['login', 'login_callback', 'login-callback', '403', '404', '500'];
 
       const meta: Partial<RouteMeta> = {
         title: key,
