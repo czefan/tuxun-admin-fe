@@ -75,3 +75,45 @@ export function sanitizeHtml(html: string | null | undefined): string {
     ALLOWED_URI_REGEXP
   });
 }
+
+/**
+ * 富文本正文的字数，口径与 api.md 一致：**纯文本**长度、按 Unicode 码点计数。
+ *
+ * 直接用 `html.length` 会把标签也算进去，等于用户加几个段落就凭空少了几十字额度，
+ * 前端会拦下后端本来接受的内容。
+ */
+export function htmlTextLength(html: string | null | undefined): number {
+  if (!html) return 0;
+
+  // DOMParser 只解析不执行，取 textContent 不存在脚本执行风险
+  const text = new DOMParser().parseFromString(html, 'text/html').body.textContent ?? '';
+  return [...text].length;
+}
+
+/**
+ * 富文本正文限额，四处正文（通知 / 弹窗 / 积分规则 / 帮助中心）统一口径。
+ *
+ * 两条同时生效，任一超限后端返回 400：
+ * - 剥离标签后的可见文本 ≤ 2000 码点（标签不计入）
+ * - 原始 HTML 串 ≤ 10000 兜底，防止大量嵌套标签把请求体撑爆
+ */
+export const RICH_TEXT_MAX_TEXT = 2000;
+export const RICH_TEXT_MAX_HTML = 10000;
+
+/**
+ * 校验富文本正文是否符合限额。
+ *
+ * @returns 空串表示通过，否则为可直接展示的错误文案
+ */
+export function validateRichText(html: string | null | undefined): string {
+  const raw = html ?? '';
+  const textLength = htmlTextLength(raw);
+
+  if (textLength > RICH_TEXT_MAX_TEXT) {
+    return `正文可见文字 ${textLength} 字，超出上限 ${RICH_TEXT_MAX_TEXT} 字，无法保存`;
+  }
+  if (raw.length > RICH_TEXT_MAX_HTML) {
+    return `正文格式过于复杂（HTML ${raw.length} 字符，上限 ${RICH_TEXT_MAX_HTML}），请精简排版后重试`;
+  }
+  return '';
+}

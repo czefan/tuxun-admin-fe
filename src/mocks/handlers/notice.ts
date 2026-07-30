@@ -1,5 +1,6 @@
 import { http } from 'msw';
 import { mockDb } from '../data/db';
+import { buildContentPreview, checkRichText, stripHtml } from '../rich-text';
 import { checkAdminAuth, mockError, mockSuccess } from '../response';
 
 export const noticeHandlers = [
@@ -11,7 +12,7 @@ export const noticeHandlers = [
 
     let filtered = mockDb.notices;
     if (keyword) {
-      filtered = filtered.filter(item => item.title.includes(keyword) || item.content.includes(keyword));
+      filtered = filtered.filter(item => item.title.includes(keyword) || stripHtml(item.content).includes(keyword));
     }
     filtered = [...filtered].sort(
       (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime() || b.id - a.id
@@ -21,7 +22,7 @@ export const noticeHandlers = [
     const list = filtered.slice(start, start + pageSize).map(item => ({
       id: item.id,
       title: item.title,
-      content_preview: item.content.slice(0, 50),
+      content_preview: buildContentPreview(item.content),
       is_read: false,
       created_at: item.created_at
     }));
@@ -56,7 +57,7 @@ export const noticeHandlers = [
 
     let filtered = mockDb.notices;
     if (keyword) {
-      filtered = filtered.filter(item => item.title.includes(keyword) || item.content.includes(keyword));
+      filtered = filtered.filter(item => item.title.includes(keyword) || stripHtml(item.content).includes(keyword));
     }
     filtered = [...filtered].sort(
       (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime() || b.id - a.id
@@ -66,7 +67,7 @@ export const noticeHandlers = [
     const list = filtered.slice(start, start + pageSize).map(item => ({
       id: item.id,
       title: item.title,
-      content_preview: item.content.slice(0, 80),
+      content_preview: buildContentPreview(item.content),
       created_at: item.created_at,
       read_count: Math.floor(Math.random() * 50)
     }));
@@ -117,6 +118,8 @@ export const noticeHandlers = [
     if (!title.trim() || !content.trim()) {
       return mockError('标题和内容不能为空');
     }
+    const limitError = checkRichText(content);
+    if (limitError) return mockError(limitError, 3);
 
     const newNotice = {
       id: mockDb.notices.length + 1,
@@ -143,7 +146,12 @@ export const noticeHandlers = [
     if (contentType.includes('multipart/form-data')) {
       const formData = await request.formData();
       if (formData.has('title')) notice.title = String(formData.get('title'));
-      if (formData.has('content')) notice.content = String(formData.get('content'));
+      if (formData.has('content')) {
+        const nextContent = String(formData.get('content'));
+        const limitError = checkRichText(nextContent);
+        if (limitError) return mockError(limitError, 3);
+        notice.content = nextContent;
+      }
       if (formData.get('remove_relation') === 'true') {
         notice.related_type = undefined;
         notice.related_id = undefined;
@@ -151,7 +159,11 @@ export const noticeHandlers = [
     } else {
       const body = (await request.json()) as any;
       if (body.title) notice.title = body.title;
-      if (body.content) notice.content = body.content;
+      if (body.content) {
+        const limitError = checkRichText(body.content);
+        if (limitError) return mockError(limitError, 3);
+        notice.content = body.content;
+      }
     }
 
     return mockSuccess({ id: notice.id, status: 'published' }, '公告已更新');

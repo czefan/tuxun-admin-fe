@@ -5,5 +5,6 @@ export * from './content';
 export * from './feedback';
 export * from './mall';
 export * from './notice';
+export * from './paginate';
 export * from './review';
 export * from './types';

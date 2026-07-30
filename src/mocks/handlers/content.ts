@@ -1,5 +1,6 @@
 import { http } from 'msw';
 import { mockDb } from '../data/db';
+import { checkRichText } from '../rich-text';
 import { checkAdminAuth, mockError, mockSuccess } from '../response';
 
 export const contentHandlers = [
@@ -20,6 +21,8 @@ export const contentHandlers = [
 
     const body = (await request.json()) as { content?: string; related_id?: number };
     if (body.content !== undefined) {
+      const limitError = checkRichText(body.content);
+      if (limitError) return mockError(limitError, 3);
       block.content = body.content;
     }
     if (key === 'popup') {
