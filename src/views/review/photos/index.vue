@@ -3,7 +3,7 @@ import { computed, h, onMounted, ref } from 'vue';
 import { NDescriptions, NDescriptionsItem, NInput, NModal, NSelect, NSpace, type DataTableColumns } from 'naive-ui';
 
 import type { PhotoReviewItem, ReviewStatus } from '@/service/api';
-import { fetchActivityList, fetchPhotoReviews, reviewPhoto } from '@/service/api';
+import { fetchAdminActivityList, fetchAllPages, fetchPhotoReviews, reviewPhoto } from '@/service/api';
 import { useTableSearch } from '@/hooks/common/table-search';
 import { useOperatingKeys } from '@/hooks/common/operating-keys';
 import TableSearchBar from '@/components/advanced/table-search-bar.vue';
@@ -36,13 +36,12 @@ const activityOptions = ref<{ label: string; value: number }[]>([]);
 
 async function loadActivities() {
   try {
-    const res = await fetchActivityList({ page: 1, page_size: 100 });
-    if (res.data?.list) {
-      activityOptions.value = res.data.list.map(item => ({
-        label: `[#${item.id}] ${item.title}`,
-        value: item.id
-      }));
-    }
+    // 管理端筛选要覆盖未开始活动，必须用 /admin/activity
+    const { list } = await fetchAllPages(params => fetchAdminActivityList(params));
+    activityOptions.value = list.map(item => ({
+      label: `[#${item.id}] ${item.title}`,
+      value: item.id
+    }));
   } catch {
     console.error('获取活动列表失败');
   }

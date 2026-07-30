@@ -17,10 +17,10 @@ import {
 import RichTextEditor from '@/components/advanced/rich-text-editor.vue';
 import { fetchContentBlock, updateContentBlock } from '@/service/api/content';
 import type { ContentBlock, ContentKey } from '@/service/api/content';
-import { fetchAdminAnnouncementList } from '@/service/api/notice';
+import { fetchAdminAnnouncementList, fetchAllPages } from '@/service/api';
 import { formatDateTime } from '@/utils/tuxun';
 import { confirmAction } from '@/utils/confirm';
-import { sanitizeHtml } from '@/utils/sanitize';
+import { RICH_TEXT_MAX_TEXT, htmlTextLength, sanitizeHtml, validateRichText } from '@/utils/sanitize';
 
 const message = useMessage();
 const activeTab = ref<ContentKey>('popup');
@@ -33,36 +33,34 @@ const BLOCKS = [
   {
     key: 'popup',
     label: '通知弹窗',
-    max: 500,
     alertType: 'info',
-    alertText: '用于用户一进入网站或小程序时的公告弹窗展示。',
+    alertText:
+      '用于用户一进入网站或小程序时的公告弹窗展示。修改保存后版本号自动加 1，已关闭弹窗的用户将重新看到该提醒。',
     tagType: 'primary',
     fieldLabel: '弹窗富文本正文',
-    placeholder: '请输入通知弹窗正文内容 (最多 500 字)...',
+    placeholder: '请输入通知弹窗正文内容...',
     emptyPreview: '暂无正文内容',
     minHeight: '240px'
   },
   {
     key: 'score_rules',
     label: '积分规则',
-    max: 2000,
     alertType: 'success',
     alertText: '用于客户端“我的积分 -> 积分规则”页面展示。',
     tagType: 'success',
     fieldLabel: '积分规则富文本正文',
-    placeholder: '请输入积分规则详细内容 (最多 2000 字)...',
+    placeholder: '请输入积分规则详细内容...',
     emptyPreview: '暂无积分规则正文',
     minHeight: '280px'
   },
   {
     key: 'help',
     label: '帮助中心',
-    max: 5000,
     alertType: 'warning',
     alertText: '用于客户端“设置 -> 帮助中心”页面展示玩法 FAQ。',
     tagType: 'warning',
     fieldLabel: '帮助中心富文本正文',
-    placeholder: '请输入帮助中心详细内容 (最多 5000 字)...',
+    placeholder: '请输入帮助中心详细内容...',
     emptyPreview: '暂无帮助中心正文',
     minHeight: '280px'
   }
@@ -78,19 +76,21 @@ const blocks = ref<Record<ContentKey, ContentBlock>>({
 
 const noticeOptions = ref<{ label: string; value: number }[]>([]);
 
+function contentLength(block: BlockConfig) {
+  return htmlTextLength(blocks.value[block.key].content);
+}
+
 function isOverLimit(block: BlockConfig) {
-  return blocks.value[block.key].content.length > block.max;
+  return Boolean(validateRichText(blocks.value[block.key].content));
 }
 
 async function loadNoticeOptions() {
   try {
-    const res = await fetchAdminAnnouncementList({ page: 1, page_size: 100 });
-    if (res.data?.list) {
-      noticeOptions.value = res.data.list.map(item => ({
-        label: `[#${item.id}] ${item.title}`,
-        value: item.id
-      }));
-    }
+    const { list } = await fetchAllPages(params => fetchAdminAnnouncementList(params));
+    noticeOptions.value = list.map(item => ({
+      label: `[#${item.id}] ${item.title}`,
+      value: item.id
+    }));
   } catch {
     console.error('获取通知列表失败');
   }
@@ -127,8 +127,9 @@ async function handleSave(block: BlockConfig) {
     message.warning('正文内容不能为空');
     return;
   }
-  if (target.content.length > block.max) {
-    message.error(`字数超出限制！当前已输入 ${target.content.length} 字，最多允许 ${block.max} 字，无法发布`);
+  const limitError = validateRichText(target.content);
+  if (limitError) {
+    message.error(limitError);
     return;
   }
 
@@ -167,9 +168,7 @@ onMounted(() => {
       <div class="flex flex-wrap items-center justify-between gap-12px">
         <div>
           <h2 class="m-0 text-20px font-semibold">内容位管理</h2>
-          <p class="mb-0 mt-4px text-13px text-#777">
-            所有未登录在内的全站用户公开可见；弹窗保存后版本号自动加 1，已关闭弹窗的用户将重新看到提醒。
-          </p>
+          <p class="mb-0 mt-4px text-13px text-#777">所有未登录在内的全站用户公开可见。</p>
         </div>
       </div>
     </NCard>
@@ -231,7 +230,7 @@ onMounted(() => {
                             class="text-12px"
                             :class="isOverLimit(block) ? 'text-red-500 font-semibold' : 'text-#888'"
                           >
-                            ({{ blocks[block.key].content.length }}/{{ block.max }} 字，包含富文本标签)
+                            ({{ contentLength(block) }}/{{ RICH_TEXT_MAX_TEXT }} 字，按纯文本计)
                             <span v-if="isOverLimit(block)" class="ml-1 text-red-500">(字数超限，禁止发布)</span>
                           </span>
                         </div>

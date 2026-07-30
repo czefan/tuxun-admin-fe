@@ -19,7 +19,7 @@ import type { DataTableColumns, UploadFileInfo } from 'naive-ui';
 import ImageDragUploader from '@/components/advanced/image-drag-uploader.vue';
 import AmapPicker from '@/components/advanced/amap-picker.vue';
 import AmapViewModal from '@/components/advanced/amap-view-modal.vue';
-import { createAdminPhoto, fetchActivityList, updateAdminPhoto } from '@/service/api/activity';
+import { createAdminPhoto, fetchAdminActivityList, fetchAllPages, updateAdminPhoto } from '@/service/api';
 
 import { fetchPhotoReviews } from '@/service/api/review';
 import type { PhotoReviewItem } from '@/service/api/review';
@@ -40,21 +40,25 @@ const rawActivities = ref<{ id: number; title: string; end_time: string }[]>([])
 
 async function loadActivities() {
   try {
-    const res = await fetchActivityList({ page: 1, page_size: 100 });
-    if (res.data?.list) {
-      rawActivities.value = res.data.list;
-      const now = Date.now();
-      allActivityOptions.value = res.data.list.map(item => ({
+    // 管理端要能给「未开始」活动加题，必须用 /admin/activity；
+    // 客户端的 /activity 按规范不返回未开始活动
+    const { list, truncated } = await fetchAllPages(params => fetchAdminActivityList(params));
+    if (truncated) {
+      console.warn('活动数量超出下拉框一次性加载上限，仅展示前 200 条');
+    }
+
+    rawActivities.value = list;
+    const now = Date.now();
+    allActivityOptions.value = list.map(item => ({
+      label: `[#${item.id}] ${item.title}`,
+      value: item.id
+    }));
+    activeActivityOptions.value = list
+      .filter(item => new Date(item.end_time).getTime() > now)
+      .map(item => ({
         label: `[#${item.id}] ${item.title}`,
         value: item.id
       }));
-      activeActivityOptions.value = res.data.list
-        .filter(item => new Date(item.end_time).getTime() > now)
-        .map(item => ({
-          label: `[#${item.id}] ${item.title}`,
-          value: item.id
-        }));
-    }
   } catch {
     console.error('获取活动失败');
   }

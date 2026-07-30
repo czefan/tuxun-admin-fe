@@ -18,7 +18,7 @@ import {
 import type { UploadFileInfo } from 'naive-ui';
 import ImageDragUploader from '@/components/advanced/image-drag-uploader.vue';
 import RichTextEditor from '@/components/advanced/rich-text-editor.vue';
-import { fetchActivityList } from '@/service/api/activity';
+import { fetchAdminActivityList, fetchAllPages } from '@/service/api';
 import {
   createAnnouncement,
   deleteAnnouncement,
@@ -27,7 +27,7 @@ import {
 } from '@/service/api/notice';
 import { useTabStore } from '@/store/modules/tab';
 import { confirmAction, confirmDelete } from '@/utils/confirm';
-import { sanitizeHtml } from '@/utils/sanitize';
+import { RICH_TEXT_MAX_TEXT, htmlTextLength, sanitizeHtml, validateRichText } from '@/utils/sanitize';
 
 const route = useRoute();
 const router = useRouter();
@@ -65,6 +65,9 @@ const model = ref({
 /** 空正文时展示的占位文案是可信字面量，不需要过滤 */
 const CONTENT_PLACEHOLDER =
   '<span class="text-gray-400 italic">通知正文将在这里实时预览，适合检查段落排版、文字长度和弹窗阅读体验。</span>';
+
+const contentLength = computed(() => htmlTextLength(model.value.content));
+const contentLimitError = computed(() => validateRichText(model.value.content));
 
 const previewContentHtml = computed(() =>
   model.value.content ? sanitizeHtml(model.value.content) : CONTENT_PLACEHOLDER
@@ -109,13 +112,12 @@ const previewImageSrc = computed(() => {
 
 async function loadActivities() {
   try {
-    const res = await fetchActivityList({ page: 1, page_size: 100 });
-    if (res.data?.list) {
-      activityOptions.value = res.data.list.map(item => ({
-        label: `[#${item.id}] ${item.title}`,
-        value: item.id
-      }));
-    }
+    // 通知可关联任意活动（含未开始），用管理端接口
+    const { list } = await fetchAllPages(params => fetchAdminActivityList(params));
+    activityOptions.value = list.map(item => ({
+      label: `[#${item.id}] ${item.title}`,
+      value: item.id
+    }));
   } catch {
     console.error('获取活动列表失败');
   }
@@ -161,8 +163,8 @@ function handleSave() {
     message.warning('请输入通知正文内容');
     return;
   }
-  if (model.value.content.length > 5000) {
-    message.error(`通知正文超出字数限制！当前 ${model.value.content.length} 字，最多允许 5000 字 (含富文本标签)`);
+  if (contentLimitError.value) {
+    message.error(contentLimitError.value);
     return;
   }
 
@@ -240,7 +242,9 @@ onMounted(() => {
       <div class="flex flex-wrap items-center justify-between gap-12px">
         <div>
           <h2 class="m-0 text-20px font-semibold">{{ isEdit ? '编辑通知' : '新建通知' }}</h2>
-          <p class="mb-0 mt-4px text-13px text-#777">通知标题限 20 字，正文限 5000 字（含富文本标签）。</p>
+          <p class="mb-0 mt-4px text-13px text-#777">
+            通知标题限 20 字，正文限 2000 字（按纯文本计，富文本标签不计入）。
+          </p>
         </div>
 
         <NSpace align="center">
@@ -290,18 +294,15 @@ onMounted(() => {
               <template #label>
                 <div class="flex items-center gap-2">
                   <span>通知完整正文</span>
-                  <span
-                    class="text-12px"
-                    :class="model.content.length > 5000 ? 'text-red-500 font-semibold' : 'text-#888'"
-                  >
-                    ({{ model.content.length }}/5000 字，包含富文本标签)
-                    <span v-if="model.content.length > 5000" class="ml-1 text-red-500">(字数超限，禁止保存)</span>
+                  <span class="text-12px" :class="contentLimitError ? 'text-red-500 font-semibold' : 'text-#888'">
+                    ({{ contentLength }}/{{ RICH_TEXT_MAX_TEXT }} 字，按纯文本计)
+                    <span v-if="contentLimitError" class="ml-1 text-red-500">(超出限制，禁止保存)</span>
                   </span>
                 </div>
               </template>
               <RichTextEditor
                 v-model:value="model.content"
-                placeholder="请输入通知详细正文内容 (最多 5000 字)..."
+                placeholder="请输入通知详细正文内容 (最多 2000 字)..."
                 :height="300"
               />
             </NFormItem>
