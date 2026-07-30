@@ -17,3 +17,20 @@ html {
 .resizable-data-table .n-data-table-table {
   width: max(var(--table-scroll-x), 100%) !important;
 }
+
+/* 提升 Data Table 底部横向滚动条层级，置于右侧固定覆盖层之上 */
+.n-data-table .n-scrollbar-rail--horizontal,
+.n-data-table .n-scrollbar-rail {
+  z-index: 20 !important;
+}
+
+/* 右侧固定列（操作列）左边界分界阴影，增强横向滚动时的视觉层次感 */
+.n-data-table .n-data-table-td--fixed-right,
+.n-data-table .n-data-table-th--fixed-right {
+  box-shadow: -5px 0 10px -4px rgba(0, 0, 0, 0.12) !important;
+}
+
+html.dark .n-data-table .n-data-table-td--fixed-right,
+html.dark .n-data-table .n-data-table-th--fixed-right {
+  box-shadow: -5px 0 10px -4px rgba(0, 0, 0, 0.45) !important;
+}
