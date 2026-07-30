@@ -4,37 +4,26 @@ import { isDev } from '@/constants/env';
 import { useSvgIcon } from '@/hooks/common/icon';
 import { $t } from '@/locales';
 import { getRoutePath } from '@/router/elegant/transform';
-import { getActivityQuestionRouteTitle } from '@/utils/route-title';
+import { useTabStore } from '../tab';
 
 /**
- * Filter auth routes by roles
+ * Filter static routes by the administrator level required in route metadata.
  *
  * @param routes Auth routes
  * @param roles Roles
  */
-export function filterAuthRoutesByRoles(routes: ElegantConstRoute[], roles: string[]) {
-  return routes.flatMap(route => filterAuthRouteByRoles(route, roles));
+export function filterAuthRoutesByLevel(routes: ElegantConstRoute[], level: number) {
+  return routes.flatMap(route => filterAuthRouteByLevel(route, level));
 }
 
-/**
- * Filter auth route by roles
- *
- * @param route Auth route
- * @param roles Roles
- */
-function filterAuthRouteByRoles(route: ElegantConstRoute, roles: string[]): ElegantConstRoute[] {
-  const routeRoles = (route.meta && route.meta.roles) || [];
-
-  // if the route's "roles" is empty, then it is allowed to access
-  const isEmptyRoles = !routeRoles.length;
-
-  // if the user's role is included in the route's "roles", then it is allowed to access
-  const hasPermission = routeRoles.some(role => roles.includes(role));
+function filterAuthRouteByLevel(route: ElegantConstRoute, level: number): ElegantConstRoute[] {
+  const requiredLevel = route.meta?.requiredLevel || 2;
+  const hasPermission = level >= requiredLevel;
 
   const filterRoute = { ...route };
 
   if (filterRoute.children?.length) {
-    filterRoute.children = filterRoute.children.flatMap(item => filterAuthRouteByRoles(item, roles));
+    filterRoute.children = filterRoute.children.flatMap(item => filterAuthRouteByLevel(item, level));
   }
 
   // Exclude the route if it has no children after filtering
@@ -42,7 +31,7 @@ function filterAuthRouteByRoles(route: ElegantConstRoute, roles: string[]): Eleg
     return [];
   }
 
-  return hasPermission || isEmptyRoles ? [filterRoute] : [];
+  return hasPermission ? [filterRoute] : [];
 }
 
 /**
@@ -178,9 +167,43 @@ function getGlobalMenuByBaseRoute(route: RouteLocationNormalizedLoaded | Elegant
   const { SvgIconVNode } = useSvgIcon();
 
   const { name, path } = route;
+  const params = (route as any).params || {};
   const { title, i18nKey, icon = import.meta.env.VITE_MENU_ICON, localIcon, iconFontSize } = route.meta ?? {};
 
-  const label = i18nKey ? $t(i18nKey) : title!;
+  const tabStore = useTabStore();
+  const activeTab = tabStore.tabs.find(
+    tab => tab.fullPath === (route as RouteLocationNormalizedLoaded).fullPath || tab.routePath === path
+  );
+
+  let label = activeTab?.newLabel || (i18nKey ? $t(i18nKey) : title!);
+  let finalIcon = icon;
+
+  if (params.id) {
+    const isCreate = params.id === 'create' || params.id === 'new' || params.id === '0';
+    if (!isCreate) {
+      if (name === 'mall_good-form') {
+        label = activeTab?.newLabel || `编辑奖品 #${params.id}`;
+        finalIcon = 'mdi:pencil-outline';
+      } else if (name === 'operation_activity-form') {
+        label = activeTab?.newLabel || `编辑活动 #${params.id}`;
+        finalIcon = 'mdi:pencil-outline';
+      } else if (name === 'operation_notice-form') {
+        label = activeTab?.newLabel || `编辑通知 #${params.id}`;
+        finalIcon = 'mdi:pencil-outline';
+      }
+    } else {
+      if (name === 'mall_good-form') {
+        label = '新增奖品';
+        finalIcon = 'mdi:package-variant-plus';
+      } else if (name === 'operation_activity-form') {
+        label = '新建活动';
+        finalIcon = 'mdi:calendar-plus';
+      } else if (name === 'operation_notice-form') {
+        label = '新建通知';
+        finalIcon = 'mdi:bell-plus-outline';
+      }
+    }
+  }
 
   const menu: App.Global.Menu = {
     key: name as string,
@@ -188,7 +211,7 @@ function getGlobalMenuByBaseRoute(route: RouteLocationNormalizedLoaded | Elegant
     i18nKey,
     routeKey: name as RouteKey,
     routePath: path as RouteMap[RouteKey],
-    icon: SvgIconVNode({ icon, localIcon, fontSize: iconFontSize || 20 })
+    icon: SvgIconVNode({ icon: finalIcon, localIcon, fontSize: iconFontSize || 20 })
   };
 
   return menu;
@@ -323,19 +346,11 @@ function transformMenuToBreadcrumb(menu: App.Global.Menu) {
   return breadcrumb;
 }
 
-function resolveBreadcrumbLabel(routeKey: RouteKey, route: RouteLocationNormalizedLoaded, fallbackLabel: string) {
-  if (routeKey === 'activity_list-question') {
-    return getActivityQuestionRouteTitle(route) || fallbackLabel;
-  }
-
-  return fallbackLabel;
-}
-
 function getBreadcrumbByRouteKey(routeKey: RouteKey, currentRoute: RouteLocationNormalizedLoaded) {
   const { SvgIconVNode } = useSvgIcon();
   const { icon = import.meta.env.VITE_MENU_ICON, localIcon, iconFontSize } = currentRoute.meta ?? {};
   const i18nKey = `route.${routeKey}` as App.I18n.I18nKey;
-  const label = resolveBreadcrumbLabel(routeKey, currentRoute, $t(i18nKey));
+  const label = $t(i18nKey);
 
   const breadcrumb: App.Global.Breadcrumb = {
     key: routeKey,
@@ -366,14 +381,11 @@ export function getBreadcrumbsByRoute(
     if (menu.key === key) {
       const breadcrumb = transformMenuToBreadcrumb(menu);
 
-      breadcrumb.label = resolveBreadcrumbLabel(menu.routeKey, route, breadcrumb.label);
-
       return [breadcrumb];
     }
 
     if (menu.key === activeKey) {
       const breadcrumbMenu = getGlobalMenuByBaseRoute(route);
-      breadcrumbMenu.label = resolveBreadcrumbLabel(breadcrumbMenu.routeKey, route, breadcrumbMenu.label);
 
       const extraBreadcrumbs = (route.meta.breadcrumbRoutes || []).map(routeKey =>
         getBreadcrumbByRouteKey(routeKey, route)

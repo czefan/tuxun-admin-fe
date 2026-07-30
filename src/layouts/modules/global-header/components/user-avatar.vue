@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { VNode } from 'vue';
+import { NAvatar, NImage } from 'naive-ui';
 import { useAuthStore } from '@/store/modules/auth';
 import { useRouterPush } from '@/hooks/common/router';
 import { useSvgIcon } from '@/hooks/common/icon';
+import { confirmAction } from '@/utils/confirm';
 import { $t } from '@/locales';
 
 defineOptions({
@@ -44,14 +46,13 @@ const options = computed(() => {
 });
 
 function logout() {
-  window.$dialog?.info({
+  confirmAction({
     title: $t('common.tip'),
     content: $t('common.logoutConfirm'),
+    tone: 'info',
     positiveText: $t('common.confirm'),
     negativeText: $t('common.cancel'),
-    onPositiveClick: () => {
-      authStore.resetStore();
-    }
+    onConfirm: () => authStore.logout()
   });
 }
 
@@ -71,9 +72,22 @@ function handleDropdown(key: DropdownKey) {
   </NButton>
   <NDropdown v-else placement="bottom" trigger="click" :options="options" @select="handleDropdown">
     <div>
-      <ButtonIcon>
-        <SvgIcon icon="ph:user-circle" class="text-icon-large" />
-        <span class="text-16px font-medium">{{ authStore.userInfo.userName }}</span>
+      <ButtonIcon class="px-12px">
+        <NImage
+          v-if="authStore.userInfo.avatar_url"
+          :src="authStore.userInfo.avatar_url"
+          width="28"
+          height="28"
+          object-fit="cover"
+          class="rounded-full overflow-hidden mr-8px border border-gray-200 dark:border-gray-700"
+          :preview-disabled="true"
+        />
+        <NAvatar v-else round :size="28" class="mr-8px bg-primary/10 text-primary font-medium">
+          {{ (authStore.userInfo.nickname || authStore.userInfo.username || '管').slice(0, 1) }}
+        </NAvatar>
+        <span class="text-15px font-medium text-gray-900 dark:text-gray-100">
+          {{ authStore.userInfo.nickname || authStore.userInfo.username }}
+        </span>
       </ButtonIcon>
     </div>
   </NDropdown>

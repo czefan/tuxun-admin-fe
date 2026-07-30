@@ -5,9 +5,8 @@ import { useBoolean } from '@sa/hooks';
 import { router } from '@/router';
 import { localStg } from '@/utils/storage';
 import { SetupStoreId } from '@/enum';
-import { setLocale } from '@/locales';
+import { $t, setLocale } from '@/locales';
 import { setDayjsLocale } from '@/locales/dayjs';
-import { getRouteTitle } from '@/utils/route-title';
 import { useRouteStore } from '../route';
 import { useTabStore } from '../tab';
 import { useThemeStore } from '../theme';
@@ -71,7 +70,9 @@ export const useAppStore = defineStore(SetupStoreId.App, () => {
 
   /** Update document title by locale */
   function updateDocumentTitleByLocale() {
-    useTitle(getRouteTitle(router.currentRoute.value));
+    const to = router.currentRoute.value;
+    const title = to.meta?.i18nKey ? $t(to.meta.i18nKey) : to.meta?.title;
+    useTitle(title || '图寻后台管理');
   }
 
   function init() {

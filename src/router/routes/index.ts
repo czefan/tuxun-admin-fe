@@ -17,10 +17,17 @@ export function createStaticRoutes() {
   const authRoutes: ElegantRoute[] = [];
 
   [...customRoutes, ...generatedRoutes].forEach(item => {
-    if (item.meta?.constant) {
-      constantRoutes.push(item);
+    let routeItem = item;
+    if (routeItem.name === 'login-callback') {
+      routeItem = {
+        ...routeItem,
+        component: 'layout.blank$view.login-callback'
+      };
+    }
+    if (routeItem.meta?.constant) {
+      constantRoutes.push(routeItem);
     } else {
-      authRoutes.push(item);
+      authRoutes.push(routeItem);
     }
   });
 

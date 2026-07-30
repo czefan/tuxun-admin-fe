@@ -40,219 +40,6 @@ export const generatedRoutes: GeneratedRoute[] = [
     }
   },
   {
-    name: 'activity',
-    path: '/activity',
-    component: 'layout.base',
-    meta: {
-      title: 'activity',
-      i18nKey: 'route.activity',
-      icon: 'mdi:calendar-month-outline',
-      order: 3
-    },
-    children: [
-      {
-        name: 'activity_list',
-        path: '/activity/list',
-        component: 'view.activity_list',
-        meta: {
-          title: 'activity_list',
-          i18nKey: 'route.activity_list',
-          icon: 'mdi:calendar-clock-outline',
-          order: 2
-        }
-      },
-      {
-        name: 'activity_list-create',
-        path: '/activity/list-create',
-        component: 'view.activity_list-create',
-        meta: {
-          title: 'activity_list-create',
-          i18nKey: 'route.activity_list-create',
-          icon: 'mdi:calendar-plus-outline',
-          hideInMenu: true,
-          activeMenu: 'activity_list'
-        }
-      },
-      {
-        name: 'activity_list-question',
-        path: '/activity/list-question/:id',
-        component: 'view.activity_list-question',
-        meta: {
-          title: 'activity_list-question',
-          i18nKey: 'route.activity_list-question',
-          icon: 'mdi:format-list-bulleted-square',
-          hideInMenu: true,
-          activeMenu: 'activity_list'
-        }
-      },
-      {
-        name: 'activity_list-question-detail',
-        path: '/activity/list-question-detail/:id',
-        component: 'view.activity_list-question-detail',
-        meta: {
-          title: 'activity_list-question-detail',
-          i18nKey: 'route.activity_list-question-detail',
-          icon: 'mdi:format-list-bulleted-square',
-          hideInMenu: true,
-          activeMenu: 'activity_list',
-          breadcrumbRoutes: ['activity_list-question']
-        }
-      },
-      {
-        name: 'activity_question',
-        path: '/activity/question',
-        component: 'view.activity_question',
-        meta: {
-          title: 'activity_question',
-          i18nKey: 'route.activity_question',
-          icon: 'mdi:camera-plus-outline',
-          order: 1
-        }
-      },
-      {
-        name: 'activity_question-create',
-        path: '/activity/question-create',
-        component: 'view.activity_question-create',
-        meta: {
-          title: 'activity_question-create',
-          i18nKey: 'route.activity_question-create',
-          icon: 'mdi:camera-plus-outline',
-          hideInMenu: true,
-          activeMenu: 'activity_question'
-        }
-      },
-      {
-        name: 'activity_question-detail',
-        path: '/activity/question-detail/:id',
-        component: 'view.activity_question-detail',
-        meta: {
-          title: 'activity_question-detail',
-          i18nKey: 'route.activity_question-detail',
-          hideInMenu: true,
-          activeMenu: 'activity_question',
-          icon: 'mdi:camera-plus-outline'
-        }
-      }
-    ]
-  },
-  {
-    name: 'content',
-    path: '/content',
-    component: 'layout.base',
-    meta: {
-      title: 'content',
-      i18nKey: 'route.content',
-      icon: 'mdi:comment-text-multiple-outline',
-      order: 6
-    },
-    children: [
-      {
-        name: 'content_about',
-        path: '/content/about',
-        component: 'view.content_about',
-        meta: {
-          title: 'content_about',
-          i18nKey: 'route.content_about',
-          icon: 'mdi:information-outline',
-          order: 3
-        }
-      },
-      {
-        name: 'content_about-diff',
-        path: '/content/about-diff',
-        component: 'view.content_about-diff',
-        meta: {
-          title: 'content_about-diff',
-          i18nKey: 'route.content_about-diff',
-          icon: 'mdi:information-outline',
-          hideInMenu: true,
-          activeMenu: 'content_about'
-        }
-      },
-      {
-        name: 'content_about-edit',
-        path: '/content/about-edit',
-        component: 'view.content_about-edit',
-        meta: {
-          title: 'content_about-edit',
-          i18nKey: 'route.content_about-edit',
-          icon: 'mdi:information-outline',
-          hideInMenu: true,
-          activeMenu: 'content_about'
-        }
-      },
-      {
-        name: 'content_comment',
-        path: '/content/comment',
-        component: 'view.content_comment',
-        meta: {
-          title: 'content_comment',
-          i18nKey: 'route.content_comment',
-          icon: 'mdi:comment-alert-outline',
-          order: 4
-        }
-      },
-      {
-        name: 'content_feedback',
-        path: '/content/feedback',
-        component: 'view.content_feedback',
-        meta: {
-          title: 'content_feedback',
-          i18nKey: 'route.content_feedback',
-          icon: 'mdi:message-alert-outline',
-          order: 1
-        }
-      },
-      {
-        name: 'content_feedback-detail',
-        path: '/content/feedback-detail/:id',
-        component: 'view.content_feedback-detail',
-        meta: {
-          title: 'content_feedback-detail',
-          i18nKey: 'route.content_feedback-detail',
-          icon: 'mdi:message-alert-outline',
-          hideInMenu: true,
-          activeMenu: 'content_feedback'
-        }
-      },
-      {
-        name: 'content_help',
-        path: '/content/help',
-        component: 'view.content_help',
-        meta: {
-          title: 'content_help',
-          i18nKey: 'route.content_help',
-          icon: 'mdi:help-circle-outline',
-          order: 2
-        }
-      },
-      {
-        name: 'content_help-create',
-        path: '/content/help-create',
-        component: 'view.content_help-create',
-        meta: {
-          title: 'content_help-create',
-          i18nKey: 'route.content_help-create',
-          icon: 'mdi:help-circle-outline',
-          hideInMenu: true,
-          activeMenu: 'content_help'
-        }
-      },
-      {
-        name: 'content_help-diff',
-        path: '/content/help-diff',
-        component: 'view.content_help-diff',
-        meta: {
-          title: 'content_help-diff',
-          i18nKey: 'route.content_help-diff',
-          icon: 'mdi:help-circle-outline',
-          hideInMenu: true,
-          activeMenu: 'content_help'
-        }
-      }
-    ]
-  },
-  {
     name: 'home',
     path: '/home',
     component: 'layout.base$view.home',
@@ -261,19 +48,6 @@ export const generatedRoutes: GeneratedRoute[] = [
       i18nKey: 'route.home',
       icon: 'mdi:monitor-dashboard',
       order: 1
-    }
-  },
-  {
-    name: 'iframe-page',
-    path: '/iframe-page/:url',
-    component: 'layout.base$view.iframe-page',
-    props: true,
-    meta: {
-      title: 'iframe-page',
-      i18nKey: 'route.iframe-page',
-      constant: true,
-      hideInMenu: true,
-      keepAlive: true
     }
   },
   {
@@ -289,6 +63,17 @@ export const generatedRoutes: GeneratedRoute[] = [
     }
   },
   {
+    name: 'login-callback',
+    path: '/login/callback',
+    component: 'layout.base$view.login-callback',
+    meta: {
+      title: 'login-callback',
+      i18nKey: 'route.login-callback',
+      hideInMenu: true,
+      constant: true
+    }
+  },
+  {
     name: 'mall',
     path: '/mall',
     component: 'layout.base',
@@ -300,120 +85,117 @@ export const generatedRoutes: GeneratedRoute[] = [
     },
     children: [
       {
-        name: 'mall_product',
-        path: '/mall/product',
-        component: 'view.mall_product',
+        name: 'mall_exchange',
+        path: '/mall/exchange',
+        component: 'view.mall_exchange',
         meta: {
-          title: 'mall_product',
-          i18nKey: 'route.mall_product',
-          icon: 'mdi:package-variant-closed',
-          order: 1
-        }
-      },
-      {
-        name: 'mall_product-create',
-        path: '/mall/product-create',
-        component: 'view.mall_product-create',
-        meta: {
-          title: 'mall_product-create',
-          i18nKey: 'route.mall_product-create',
-          icon: 'mdi:package-variant-plus',
-          hideInMenu: true,
-          activeMenu: 'mall_product'
-        }
-      },
-      {
-        name: 'mall_product-detail',
-        path: '/mall/product-detail/:id',
-        component: 'view.mall_product-detail',
-        meta: {
-          title: 'mall_product-detail',
-          i18nKey: 'route.mall_product-detail',
-          hideInMenu: true,
-          activeMenu: 'mall_product',
-          icon: 'mdi:package-variant-closed'
-        }
-      },
-      {
-        name: 'mall_redemption',
-        path: '/mall/redemption',
-        component: 'view.mall_redemption',
-        meta: {
-          title: 'mall_redemption',
-          i18nKey: 'route.mall_redemption',
+          title: 'mall_exchange',
+          i18nKey: 'route.mall_exchange',
           icon: 'mdi:ticket-confirmation-outline',
           order: 2
         }
       },
       {
-        name: 'mall_rules',
-        path: '/mall/rules',
-        component: 'view.mall_rules',
+        name: 'mall_goods',
+        path: '/mall/goods',
+        component: 'view.mall_goods',
         meta: {
-          title: 'mall_rules',
-          i18nKey: 'route.mall_rules',
-          icon: 'mdi:format-list-checks',
-          order: 3
-        }
-      },
-      {
-        name: 'mall_rules-diff',
-        path: '/mall/rules-diff',
-        component: 'view.mall_rules-diff',
-        meta: {
-          title: 'mall_rules-diff',
-          i18nKey: 'route.mall_rules-diff',
-          icon: 'mdi:format-list-checks',
-          hideInMenu: true,
-          activeMenu: 'mall_rules'
+          title: 'mall_goods',
+          i18nKey: 'route.mall_goods',
+          icon: 'mdi:package-variant-closed',
+          order: 1
         }
       }
     ]
   },
   {
-    name: 'notice',
-    path: '/notice',
+    name: 'operation',
+    path: '/operation',
     component: 'layout.base',
     meta: {
-      title: 'notice',
-      i18nKey: 'route.notice',
-      icon: 'mdi:bell-outline',
-      order: 5
+      title: 'operation',
+      i18nKey: 'route.operation',
+      icon: 'mdi:calendar-month-outline',
+      order: 3
     },
     children: [
       {
-        name: 'notice_list',
-        path: '/notice/list',
-        component: 'view.notice_list',
+        name: 'operation_activities',
+        path: '/operation/activities',
+        component: 'view.operation_activities',
         meta: {
-          title: 'notice_list',
-          i18nKey: 'route.notice_list',
-          icon: 'mdi:bell-badge-outline',
+          title: 'operation_activities',
+          i18nKey: 'route.operation_activities',
+          icon: 'mdi:calendar-clock-outline',
           order: 1
         }
       },
       {
-        name: 'notice_list-create',
-        path: '/notice/list-create',
-        component: 'view.notice_list-create',
+        name: 'operation_feedback',
+        path: '/operation/feedback',
+        component: 'view.operation_feedback',
         meta: {
-          title: 'notice_list-create',
-          i18nKey: 'route.notice_list-create',
-          icon: 'mdi:bell-plus-outline',
-          hideInMenu: true,
-          activeMenu: 'notice_list'
+          title: 'operation_feedback',
+          i18nKey: 'route.operation_feedback',
+          icon: 'mdi:message-alert-outline',
+          order: 3
         }
       },
       {
-        name: 'notice_list-detail',
-        path: '/notice/list-detail/:id',
-        component: 'view.notice_list-detail',
+        name: 'operation_feedback-detail',
+        path: '/operation/feedback-detail/:id',
+        component: 'view.operation_feedback-detail',
         meta: {
-          title: 'notice_list-detail',
-          i18nKey: 'route.notice_list-detail',
+          title: 'operation_feedback-detail',
+          i18nKey: 'route.operation_feedback-detail',
+          icon: 'mdi:message-alert-outline',
           hideInMenu: true,
-          activeMenu: 'notice_list',
-          icon: 'mdi:bell-badge-outline'
+          activeMenu: 'operation_feedback'
+        }
+      },
+      {
+        name: 'operation_notice',
+        path: '/operation/notice',
+        component: 'view.operation_notice',
+        meta: {
+          title: 'operation_notice',
+          i18nKey: 'route.operation_notice',
+          icon: 'mdi:bell-outline',
+          order: 2
+        }
+      },
+      {
+        name: 'operation_notice-form',
+        path: '/operation/notice-form/:id',
+        component: 'view.operation_notice-form',
+        meta: {
+          title: 'operation_notice-form',
+          i18nKey: 'route.operation_notice-form',
+          icon: 'mdi:bell-ring-outline',
+          hideInMenu: true,
+          activeMenu: 'operation_notice'
+        }
+      },
+      {
+        name: 'operation_other',
+        path: '/operation/other',
+        component: 'view.operation_other',
+        meta: {
+          title: 'operation_other',
+          i18nKey: 'route.operation_other',
+          icon: 'mdi:dots-horizontal-circle-outline',
+          order: 4
+        }
+      },
+      {
+        name: 'operation_questions',
+        path: '/operation/questions',
+        component: 'view.operation_questions',
+        meta: {
+          title: 'operation_questions',
+          i18nKey: 'route.operation_questions',
+          icon: 'mdi:image-multiple-outline',
+          order: 0
         }
       }
     ]
@@ -430,85 +212,60 @@ export const generatedRoutes: GeneratedRoute[] = [
     },
     children: [
       {
-        name: 'review_answer',
-        path: '/review/answer',
-        component: 'view.review_answer',
+        name: 'review_attempts',
+        path: '/review/attempts',
+        component: 'view.review_attempts',
         meta: {
-          title: 'review_answer',
-          i18nKey: 'route.review_answer',
+          title: 'review_attempts',
+          i18nKey: 'route.review_attempts',
           icon: 'mdi:map-check-outline',
           order: 2
         }
       },
       {
-        name: 'review_answer-detail',
-        path: '/review/answer-detail/:id',
-        component: 'view.review_answer-detail',
+        name: 'review_comments',
+        path: '/review/comments',
+        component: 'view.review_comments',
         meta: {
-          title: 'review_answer-detail',
-          i18nKey: 'route.review_answer-detail',
-          icon: 'mdi:map-marker-check-outline',
-          hideInMenu: true,
-          activeMenu: 'review_answer'
+          title: 'review_comments',
+          i18nKey: 'route.review_comments',
+          icon: 'mdi:comment-alert-outline',
+          order: 3
         }
       },
       {
-        name: 'review_question',
-        path: '/review/question',
-        component: 'view.review_question',
+        name: 'review_photos',
+        path: '/review/photos',
+        component: 'view.review_photos',
         meta: {
-          title: 'review_question',
-          i18nKey: 'route.review_question',
+          title: 'review_photos',
+          i18nKey: 'route.review_photos',
           icon: 'mdi:image-check-outline',
           order: 1
-        }
-      },
-      {
-        name: 'review_question-detail',
-        path: '/review/question-detail/:id',
-        component: 'view.review_question-detail',
-        meta: {
-          title: 'review_question-detail',
-          i18nKey: 'route.review_question-detail',
-          icon: 'mdi:image-search-outline',
-          hideInMenu: true,
-          activeMenu: 'review_question'
         }
       }
     ]
   },
   {
-    name: 'user',
-    path: '/user',
+    name: 'system',
+    path: '/system',
     component: 'layout.base',
     meta: {
-      title: 'user',
-      i18nKey: 'route.user',
-      icon: 'mdi:account-group-outline',
-      order: 7
+      title: 'system',
+      i18nKey: 'route.system',
+      icon: 'mdi:cog-outline',
+      order: 5
     },
     children: [
       {
-        name: 'user_list',
-        path: '/user/list',
-        component: 'view.user_list',
+        name: 'system_users',
+        path: '/system/users',
+        component: 'view.system_users',
         meta: {
-          title: 'user_list',
-          i18nKey: 'route.user_list',
-          icon: 'mdi:account-multiple-outline',
+          title: 'system_users',
+          i18nKey: 'route.system_users',
+          icon: 'mdi:account-group-outline',
           order: 1
-        }
-      },
-      {
-        name: 'user_list-detail',
-        path: '/user/list-detail/:id',
-        component: 'view.user_list-detail',
-        meta: {
-          title: 'user_list-detail',
-          i18nKey: 'route.user_list-detail',
-          icon: 'mdi:account-details-outline',
-          hideInMenu: true,
-          activeMenu: 'user_list'
         }
       }
     ]

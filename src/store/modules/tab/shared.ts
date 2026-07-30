@@ -61,13 +61,35 @@ export function getTabIdByRoute(route: App.Global.TabRoute) {
  */
 export function getTabByRoute(route: App.Global.TabRoute) {
   const { name, path, fullPath = path, meta } = route;
+  const params = (route as any).params || {};
 
   const { title, i18nKey, fixedIndexInTab } = meta;
 
   // Get icon and localIcon from getRouteIcons function
   const { icon, localIcon } = getRouteIcons(route);
 
-  const label = i18nKey ? $t(i18nKey) : title;
+  let label = i18nKey ? $t(i18nKey) : title;
+
+  if (params.id) {
+    const isCreate = params.id === 'create' || params.id === 'new' || params.id === '0';
+    if (!isCreate) {
+      if (name === 'mall_good-form') {
+        label = `编辑奖品 #${params.id}`;
+      } else if (name === 'operation_activity-form') {
+        label = `编辑活动 #${params.id}`;
+      } else if (name === 'operation_notice-form') {
+        label = `编辑通知 #${params.id}`;
+      }
+    } else {
+      if (name === 'mall_good-form') {
+        label = '新增奖品';
+      } else if (name === 'operation_activity-form') {
+        label = '新建活动';
+      } else if (name === 'operation_notice-form') {
+        label = '新建通知';
+      }
+    }
+  }
 
   const tab: App.Global.Tab = {
     id: getTabIdByRoute(route),
@@ -98,10 +120,33 @@ export function getRouteIcons(route: App.Global.TabRoute) {
   // Route.matched only appears when there are multiple matches,so check if route.matched exists
   if (route.matched) {
     // Find the meta of the current route from matched
-    const currentRoute = route.matched.find(r => r.name === route.name);
+    const currentRoute = route.matched.at(-1);
+
     // If icon exists in currentRoute.meta, it will overwrite the default value
     icon = currentRoute?.meta?.icon || icon;
     localIcon = currentRoute?.meta?.localIcon;
+  }
+
+  const params = (route as any).params || {};
+  if (params.id) {
+    const isCreate = params.id === 'create' || params.id === 'new' || params.id === '0';
+    if (!isCreate) {
+      if (
+        route.name === 'mall_good-form' ||
+        route.name === 'operation_activity-form' ||
+        route.name === 'operation_notice-form'
+      ) {
+        icon = 'mdi:pencil-outline';
+      }
+    } else {
+      if (route.name === 'mall_good-form') {
+        icon = 'mdi:package-variant-plus';
+      } else if (route.name === 'operation_activity-form') {
+        icon = 'mdi:calendar-plus';
+      } else if (route.name === 'operation_notice-form') {
+        icon = 'mdi:bell-plus-outline';
+      }
+    }
   }
 
   return { icon, localIcon };

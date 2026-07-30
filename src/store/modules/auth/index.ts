@@ -1,184 +1,268 @@
 import { computed, reactive, ref } from 'vue';
-import { useRoute } from 'vue-router';
 import { defineStore } from 'pinia';
 import { useLoading } from '@sa/hooks';
-import { fetchGetUserInfo, fetchLogin } from '@/service/api';
+import { fetchGetUserInfo, fetchLoginCallback, fetchLogout, fetchTestLogin, getLoginEntryUrl } from '@/service/api';
 import { useRouterPush } from '@/hooks/common/router';
-import { localStg } from '@/utils/storage';
+import { localStg, sessionStg } from '@/utils/storage';
 import { SetupStoreId } from '@/enum';
-import { $t } from '@/locales';
 import { useRouteStore } from '../route';
 import { useTabStore } from '../tab';
-import { clearAuthStorage, getToken } from './shared';
+import type { AuthSessionStatus } from './shared';
+import { createEmptyUserInfo, sanitizeLoginRedirect } from './shared';
 
 export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
-  const route = useRoute();
-  const authStore = useAuthStore();
   const routeStore = useRouteStore();
   const tabStore = useTabStore();
-  const { toLogin, redirectFromLogin } = useRouterPush(false);
+  const { toLogin } = useRouterPush(false);
   const { loading: loginLoading, startLoading, endLoading } = useLoading();
 
-  const token = ref('');
+  const authEpoch = ref(0);
+  const sessionStatus = ref<AuthSessionStatus>('unknown');
+  const sessionInitialized = ref(false);
+  const hasSession = ref(false);
+  const userInfo = reactive<Api.Auth.UserInfo>(createEmptyUserInfo());
 
-  const userInfo: Api.Auth.UserInfo = reactive({
-    userId: '',
-    userName: '',
-    roles: [],
-    buttons: []
-  });
+  const isAdmin = computed(() => hasSession.value && userInfo.level >= 2);
+  const isLogin = computed(() => isAdmin.value);
+  const isSuperAdmin = computed(() => isAdmin.value && userInfo.level >= 3);
 
-  /** is super role in static route */
-  const isStaticSuper = computed(() => {
-    const { VITE_AUTH_ROUTE_MODE, VITE_STATIC_SUPER_ROLE } = import.meta.env;
+  let initSessionPromise: Promise<boolean> | null = null;
+  let sessionExpiredPromise: Promise<void> | null = null;
+  let logoutPromise: Promise<boolean> | null = null;
 
-    return VITE_AUTH_ROUTE_MODE === 'static' && userInfo.roles.includes(VITE_STATIC_SUPER_ROLE);
-  });
-
-  /** Is login */
-  const isLogin = computed(() => Boolean(token.value));
-
-  /** Reset auth store */
-  async function resetStore() {
-    recordUserId();
-
-    clearAuthStorage();
-
-    authStore.$reset();
-
-    if (!route.meta.constant) {
-      await toLogin();
-    }
-
-    tabStore.cacheTabs();
-    routeStore.resetStore();
+  function bumpEpoch() {
+    authEpoch.value += 1;
   }
 
-  /** Record the user ID of the previous login session Used to compare with the current user ID on next login */
+  function clearSession() {
+    bumpEpoch();
+    hasSession.value = false;
+    Object.assign(userInfo, createEmptyUserInfo());
+    sessionInitialized.value = true;
+    sessionStatus.value = 'anonymous';
+  }
+
   function recordUserId() {
-    if (!userInfo.userId) {
-      return;
+    if (userInfo.id) {
+      localStg.set('lastLoginUserId', String(userInfo.id));
     }
-
-    // Store current user ID locally for next login comparison
-    localStg.set('lastLoginUserId', userInfo.userId);
   }
 
-  /**
-   * Check if current login user is different from previous login user If different, clear all tabs
-   *
-   * @returns {boolean} Whether to clear all tabs
-   */
-  function checkTabClear(): boolean {
-    if (!userInfo.userId) {
-      return false;
-    }
+  function checkTabClear() {
+    if (!userInfo.id) return false;
 
+    const currentUserId = String(userInfo.id);
     const lastLoginUserId = localStg.get('lastLoginUserId');
+    const shouldClear = Boolean(lastLoginUserId && lastLoginUserId !== currentUserId);
 
-    // Clear all tabs if current user is different from previous user
-    if (!lastLoginUserId || lastLoginUserId !== userInfo.userId) {
+    if (shouldClear) {
       localStg.remove('globalTabs');
       tabStore.clearTabs();
-
-      localStg.remove('lastLoginUserId');
-      return true;
     }
 
     localStg.remove('lastLoginUserId');
-    return false;
+    return shouldClear;
+  }
+
+  let getUserInfoPromise: Promise<boolean> | null = null;
+
+  async function getUserInfo() {
+    if (getUserInfoPromise) return getUserInfoPromise;
+
+    getUserInfoPromise = (async () => {
+      try {
+        const requestEpoch = authEpoch.value;
+        sessionStatus.value = 'loading';
+        const response = await fetchGetUserInfo();
+
+        if (requestEpoch !== authEpoch.value) {
+          return false;
+        }
+
+        if (response.error) {
+          const status = response.error.response?.status;
+          clearSession();
+          if (status === 401) {
+            return false;
+          }
+          if (status === 403) {
+            sessionStatus.value = 'forbidden';
+            sessionInitialized.value = true;
+            return false;
+          }
+          sessionStatus.value = 'error';
+          sessionInitialized.value = true;
+          return false;
+        }
+
+        const data = response.data;
+        if (!data || typeof data.level !== 'number' || data.level < 2 || !data.id || !data.netid) {
+          await fetchLogout();
+          clearSession();
+          sessionStatus.value = 'forbidden';
+          window.$message?.error('当前账号无后台管理权限');
+          return false;
+        }
+
+        Object.assign(userInfo, createEmptyUserInfo(), data);
+        hasSession.value = true;
+        sessionInitialized.value = true;
+        sessionStatus.value = 'authenticated';
+
+        return true;
+      } finally {
+        getUserInfoPromise = null;
+      }
+    })();
+
+    return getUserInfoPromise;
+  }
+
+  async function initSession() {
+    if (sessionInitialized.value) return isLogin.value;
+
+    if (!initSessionPromise) {
+      initSessionPromise = (async () => {
+        try {
+          await getUserInfo();
+          return isLogin.value;
+        } finally {
+          initSessionPromise = null;
+        }
+      })();
+    }
+
+    return initSessionPromise;
+  }
+
+  function beginLogin(redirect?: string) {
+    if (redirect) {
+      const sanitized = sanitizeLoginRedirect(redirect);
+      sessionStg.set('loginRedirect', sanitized);
+    } else {
+      sessionStg.remove('loginRedirect');
+    }
+
+    window.location.assign(getLoginEntryUrl());
+  }
+
+  function consumeLoginRedirect() {
+    const redirect = sessionStg.get('loginRedirect');
+    sessionStg.remove('loginRedirect');
+    return sanitizeLoginRedirect(redirect);
+  }
+
+  async function completeLogin(guid: string) {
+    startLoading();
+
+    try {
+      if (guid) {
+        const callbackResult = await fetchLoginCallback(guid);
+        if (callbackResult.error) return false;
+      }
+
+      // getUserInfo 内部已校验 level >= 2，不合格的账号在那里就被登出了
+      const loaded = await getUserInfo();
+      if (!loaded) return false;
+
+      checkTabClear();
+      window.$notification?.success({
+        title: '登录成功',
+        content: `欢迎回来，${userInfo.nickname || userInfo.username}`,
+        duration: 3500
+      });
+
+      return true;
+    } finally {
+      endLoading();
+    }
   }
 
   /**
-   * Login
-   *
-   * @param userName User name
-   * @param password Password
-   * @param [redirect=true] Whether to redirect after login. Default is `true`
+   * 开发 / 测试环境的免 SSO 登录：按用户 ID 直接建立会话。
+   * 生产构建下 MODE 常量折叠后整段会被摇掉，后端也不会开放该接口。
    */
-  async function login(userName: string, password: string, redirect = true) {
+  async function testLogin(userId: number, password: string) {
+    // 生产构建下 MODE 折叠为字面量，整个函数体成为死代码被摇掉
+    if (import.meta.env.MODE === 'prod') return false;
+
     startLoading();
+    try {
+      const result = await fetchTestLogin({ user_id: userId, password });
+      if (result.error) return false;
+    } finally {
+      endLoading();
+    }
 
-    const { data: loginToken, error } = await fetchLogin(userName, password);
+    // 会话已由后端种下，复用统一的收尾流程（拉用户信息 + 等级校验 + 欢迎提示）
+    return completeLogin('');
+  }
 
-    if (!error) {
-      const pass = await loginByToken(loginToken);
+  async function resetStore(redirect = true) {
+    recordUserId();
+    clearSession();
 
-      if (pass) {
-        // Check if the tab needs to be cleared
-        const isClear = checkTabClear();
-        let needRedirect = redirect;
+    tabStore.cacheTabs();
+    await routeStore.resetStore();
 
-        if (isClear) {
-          // If the tab needs to be cleared,it means we don't need to redirect.
-          needRedirect = false;
+    if (redirect) {
+      await toLogin();
+    }
+  }
+
+  async function logout() {
+    if (!logoutPromise) {
+      logoutPromise = (async () => {
+        try {
+          const result = await fetchLogout();
+          await resetStore();
+          return !result.error;
+        } finally {
+          logoutPromise = null;
         }
-        await redirectFromLogin(needRedirect);
-
-        window.$notification?.success({
-          title: $t('page.login.common.loginSuccess'),
-          content: $t('page.login.common.welcomeBack', { userName: userInfo.userName }),
-          duration: 4500
-        });
-      }
-    } else {
-      resetStore();
+      })();
     }
-
-    endLoading();
+    return logoutPromise;
   }
 
-  async function loginByToken(loginToken: Api.Auth.LoginToken) {
-    // 1. stored in the localStorage, the later requests need it in headers
-    localStg.set('token', loginToken.token);
-    localStg.set('refreshToken', loginToken.refreshToken);
+  async function handleSessionExpired() {
+    if (!sessionExpiredPromise) {
+      sessionExpiredPromise = (async () => {
+        try {
+          const wasLoggedIn = hasSession.value;
+          await resetStore();
 
-    // 2. get user info
-    const pass = await getUserInfo();
-
-    if (pass) {
-      token.value = loginToken.token;
-
-      return true;
+          if (wasLoggedIn) {
+            window.$message?.warning('登录状态已失效，请重新登录');
+          }
+        } finally {
+          sessionExpiredPromise = null;
+        }
+      })();
     }
 
-    return false;
-  }
-
-  async function getUserInfo() {
-    const { data: info, error } = await fetchGetUserInfo();
-
-    if (!error) {
-      // update store
-      Object.assign(userInfo, info);
-
-      return true;
-    }
-
-    return false;
-  }
-
-  async function initUserInfo() {
-    const maybeToken = getToken();
-
-    if (maybeToken) {
-      token.value = maybeToken;
-      const pass = await getUserInfo();
-
-      if (!pass) {
-        resetStore();
-      }
-    }
+    return sessionExpiredPromise;
   }
 
   return {
-    token,
+    authEpoch,
+    sessionStatus,
+    sessionInitialized,
+    hasSession,
     userInfo,
-    isStaticSuper,
+    isAdmin,
     isLogin,
+    isSuperAdmin,
     loginLoading,
+    getUserInfo,
+    clearSession,
+    initSession,
+    beginLogin,
+    consumeLoginRedirect,
+    completeLogin,
+    testLogin,
     resetStore,
-    login,
-    initUserInfo
+    logout,
+    handleSessionExpired
   };
 });

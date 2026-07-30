@@ -1,12 +1,33 @@
-import { localStg } from '@/utils/storage';
+export type AuthSessionStatus = 'unknown' | 'loading' | 'authenticated' | 'anonymous' | 'forbidden' | 'error';
 
-/** Get token */
-export function getToken() {
-  return localStg.get('token') || '';
+export function createEmptyUserInfo(): Api.Auth.UserInfo {
+  return {
+    id: 0,
+    netid: '',
+    username: '',
+    nickname: '',
+    avatar_url: '',
+    score_count: 0,
+    level: 0,
+    nickname_edits_remaining: 0,
+    avatar_edits_remaining: 0
+  };
 }
 
-/** Clear auth storage */
-export function clearAuthStorage() {
-  localStg.remove('token');
-  localStg.remove('refreshToken');
+export function sanitizeLoginRedirect(redirect?: string | null): string {
+  if (!redirect) return '/home';
+  const trimmed = redirect.trim();
+  if (
+    !trimmed.startsWith('/') ||
+    trimmed.startsWith('//') ||
+    trimmed.startsWith('/login') ||
+    trimmed.startsWith('/login-callback') ||
+    trimmed.startsWith('/403')
+  ) {
+    return '/home';
+  }
+  if (trimmed.includes(':') || trimmed.includes('javascript:')) {
+    return '/home';
+  }
+  return trimmed;
 }
