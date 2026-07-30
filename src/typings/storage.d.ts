@@ -3,6 +3,8 @@ declare namespace StorageType {
   interface Session {
     /** The theme color */
     themeColor: string;
+    /** The protected route requested before school authentication */
+    loginRedirect: string;
     // /**
     //  * the theme settings
     //  */
@@ -12,12 +14,8 @@ declare namespace StorageType {
   interface Local {
     /** The i18n language */
     lang: App.I18n.LangType;
-    /** The token */
-    token: string;
     /** Fixed sider with mix-menu */
     mixSiderFixed: CommonType.YesOrNo;
-    /** The refresh token */
-    refreshToken: string;
     /** The theme color */
     themeColor: string;
     /** The dark mode */

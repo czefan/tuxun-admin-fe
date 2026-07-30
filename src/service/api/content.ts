@@ -1,62 +1,29 @@
 import { request } from '../request';
-import type { PageParams, PageResult } from './types';
+import type { OperationResult } from './types';
 
-export interface CommentItem {
-  id: string;
-  questionTitle: string;
-  userName: string;
+export type ContentKey = 'popup' | 'score_rules' | 'help';
+
+export interface ContentBlock {
+  key: ContentKey;
   content: string;
-  riskLevel: 'normal' | 'suspicious' | 'blocked';
-  createdAt: string;
+  related_id?: number;
+  version: number;
+  updated_at: string | null;
 }
 
-export interface NoticeItem {
-  id: string;
-  title: string;
-  target: 'all' | 'users';
-  sentAt?: string;
-  status: 'draft' | 'sent';
-}
-
-export interface NoticePayload {
-  title: string;
+export interface UpdateContentPayload {
   content: string;
-  target: 'all' | 'users';
-  userIds?: string[];
+  related_id?: number;
 }
 
-export function fetchComments(params: PageParams) {
-  return request<PageResult<CommentItem>>({
-    url: '/admin/comments',
-    params
-  });
+export function fetchContentBlock(key: ContentKey) {
+  return request<ContentBlock>({ url: `/contents/${key}` });
 }
 
-export function deleteComment(id: string) {
-  return request<void>({
-    url: `/admin/comments/${id}`,
-    method: 'delete'
-  });
-}
-
-export function fetchNotices(params: PageParams) {
-  return request<PageResult<NoticeItem>>({
-    url: '/admin/notices',
-    params
-  });
-}
-
-export function createNotice(data: NoticePayload) {
-  return request<void>({
-    url: '/admin/notices',
-    method: 'post',
+export function updateContentBlock(key: ContentKey, data: UpdateContentPayload) {
+  return request<OperationResult & { key: ContentKey; version: number }>({
+    url: `/admin/contents/${key}`,
+    method: 'put',
     data
-  });
-}
-
-export function sendNotice(id: string) {
-  return request<void>({
-    url: `/admin/notices/${id}/send`,
-    method: 'post'
   });
 }

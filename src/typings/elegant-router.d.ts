@@ -20,46 +20,26 @@ declare module "@elegant-router/types" {
     "403": "/403";
     "404": "/404";
     "500": "/500";
-    "activity": "/activity";
-    "activity_list": "/activity/list";
-    "activity_list-create": "/activity/list-create";
-    "activity_list-question": "/activity/list-question/:id";
-    "activity_list-question-detail": "/activity/list-question-detail/:id";
-    "activity_question": "/activity/question";
-    "activity_question-create": "/activity/question-create";
-    "activity_question-detail": "/activity/question-detail/:id";
-    "content": "/content";
-    "content_about": "/content/about";
-    "content_about-diff": "/content/about-diff";
-    "content_about-edit": "/content/about-edit";
-    "content_comment": "/content/comment";
-    "content_feedback": "/content/feedback";
-    "content_feedback-detail": "/content/feedback-detail/:id";
-    "content_help": "/content/help";
-    "content_help-create": "/content/help-create";
-    "content_help-diff": "/content/help-diff";
     "home": "/home";
-    "iframe-page": "/iframe-page/:url";
     "login": "/login";
+    "login-callback": "/login/callback";
     "mall": "/mall";
-    "mall_product": "/mall/product";
-    "mall_product-create": "/mall/product-create";
-    "mall_product-detail": "/mall/product-detail/:id";
-    "mall_redemption": "/mall/redemption";
-    "mall_rules": "/mall/rules";
-    "mall_rules-diff": "/mall/rules-diff";
-    "notice": "/notice";
-    "notice_list": "/notice/list";
-    "notice_list-create": "/notice/list-create";
-    "notice_list-detail": "/notice/list-detail/:id";
+    "mall_exchange": "/mall/exchange";
+    "mall_goods": "/mall/goods";
+    "operation": "/operation";
+    "operation_activities": "/operation/activities";
+    "operation_feedback": "/operation/feedback";
+    "operation_feedback-detail": "/operation/feedback-detail/:id";
+    "operation_notice": "/operation/notice";
+    "operation_notice-form": "/operation/notice-form/:id";
+    "operation_other": "/operation/other";
+    "operation_questions": "/operation/questions";
     "review": "/review";
-    "review_answer": "/review/answer";
-    "review_answer-detail": "/review/answer-detail/:id";
-    "review_question": "/review/question";
-    "review_question-detail": "/review/question-detail/:id";
-    "user": "/user";
-    "user_list": "/user/list";
-    "user_list-detail": "/user/list-detail/:id";
+    "review_attempts": "/review/attempts";
+    "review_comments": "/review/comments";
+    "review_photos": "/review/photos";
+    "system": "/system";
+    "system_users": "/system/users";
   };
 
   /**
@@ -94,15 +74,13 @@ declare module "@elegant-router/types" {
     | "403"
     | "404"
     | "500"
-    | "activity"
-    | "content"
     | "home"
-    | "iframe-page"
     | "login"
+    | "login-callback"
     | "mall"
-    | "notice"
+    | "operation"
     | "review"
-    | "user"
+    | "system"
   >;
 
   /**
@@ -122,40 +100,22 @@ declare module "@elegant-router/types" {
     | "403"
     | "404"
     | "500"
-    | "iframe-page"
+    | "login-callback"
     | "login"
-    | "activity_list-create"
-    | "activity_list-question-detail"
-    | "activity_list-question"
-    | "activity_list"
-    | "activity_question-create"
-    | "activity_question-detail"
-    | "activity_question"
-    | "content_about-diff"
-    | "content_about-edit"
-    | "content_about"
-    | "content_comment"
-    | "content_feedback-detail"
-    | "content_feedback"
-    | "content_help-create"
-    | "content_help-diff"
-    | "content_help"
     | "home"
-    | "mall_product-create"
-    | "mall_product-detail"
-    | "mall_product"
-    | "mall_redemption"
-    | "mall_rules-diff"
-    | "mall_rules"
-    | "notice_list-create"
-    | "notice_list-detail"
-    | "notice_list"
-    | "review_answer-detail"
-    | "review_answer"
-    | "review_question-detail"
-    | "review_question"
-    | "user_list-detail"
-    | "user_list"
+    | "mall_exchange"
+    | "mall_goods"
+    | "operation_activities"
+    | "operation_feedback-detail"
+    | "operation_feedback"
+    | "operation_notice-form"
+    | "operation_notice"
+    | "operation_other"
+    | "operation_questions"
+    | "review_attempts"
+    | "review_comments"
+    | "review_photos"
+    | "system_users"
   >;
 
   /**

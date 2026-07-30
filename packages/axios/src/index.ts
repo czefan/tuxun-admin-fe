@@ -52,6 +52,12 @@ function createCommonRequest<
 
   instance.interceptors.response.use(
     async response => {
+      const requestId = (response.config?.headers?.get?.(REQUEST_ID_KEY) ||
+        response.config?.headers?.[REQUEST_ID_KEY]) as string | undefined;
+      if (requestId) {
+        abortControllerMap.delete(requestId);
+      }
+
       const responseType: ResponseType = (response.config?.responseType as ResponseType) || 'json';
 
       await transformResponse(response);
@@ -78,6 +84,13 @@ function createCommonRequest<
       return Promise.reject(backendError);
     },
     async (error: AxiosError<ResponseData>) => {
+      const requestId = (error.config?.headers?.get?.(REQUEST_ID_KEY) || error.config?.headers?.[REQUEST_ID_KEY]) as
+        | string
+        | undefined;
+      if (requestId) {
+        abortControllerMap.delete(requestId);
+      }
+
       await opts.onError(error);
 
       return Promise.reject(error);

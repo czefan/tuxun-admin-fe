@@ -1,65 +1,95 @@
 import { request } from '../request';
-import type { PageParams, PageResult } from './types';
+import { appendFormValue } from './types';
+import type { GoodBrief, OperationResult, PageParams, PageResult, UserBrief } from './types';
 
-export interface ProductItem {
-  id: string;
+export type GoodStatus = 'in_store' | 'out_store';
+export type ExchangeStatus = 'pending' | 'verified' | 'cancelled';
+
+export interface GoodListItem {
+  id: number;
   name: string;
-  points: number;
+  description: string;
+  thumb_url: string;
+  image_url: string;
+  /** 兑换所需积分 */
+  score_price: number;
   stock: number;
-  status: 'on' | 'off';
+  status: GoodStatus;
+  created_at: string;
 }
 
-export interface ProductPayload {
-  name: string;
-  points: number;
-  stock: number;
-  imageUrl?: string;
+export type GoodDetail = GoodListItem;
+
+export interface GoodFormPayload {
+  name?: string;
   description?: string;
+  /** 兑换所需积分 */
+  score_price?: number;
+  stock?: number;
+  image?: File;
+  status?: GoodStatus;
 }
 
-export interface RedemptionItem {
-  id: string;
-  productName: string;
-  userName: string;
-  code: string;
-  status: 'pending' | 'verified' | 'expired';
-  exchangedAt: string;
+export type { GoodBrief };
+
+export interface ExchangeItem {
+  id: number;
+  user: UserBrief;
+  good: GoodBrief;
+  quantity: number;
+  score_cost: number;
+  status: ExchangeStatus;
+  exchange_at: string | null;
+  created_at: string;
 }
 
-export function fetchProducts(params: PageParams) {
-  return request<PageResult<ProductItem>>({
-    url: '/admin/mall/products',
-    params
-  });
+function createGoodFormData(data: Partial<GoodFormPayload>) {
+  const formData = new FormData();
+  if (data.name !== undefined) appendFormValue(formData, 'name', data.name);
+  if (data.description !== undefined) appendFormValue(formData, 'description', data.description);
+  if (data.score_price !== undefined) appendFormValue(formData, 'score_price', data.score_price);
+  if (data.stock !== undefined) appendFormValue(formData, 'stock', data.stock);
+  if (data.image) appendFormValue(formData, 'image', data.image);
+  if (data.status !== undefined) appendFormValue(formData, 'status', data.status);
+  return formData;
 }
 
-export function saveProduct(data: ProductPayload & { id?: string }) {
-  return request<void>({
-    url: data.id ? `/admin/mall/products/${data.id}` : '/admin/mall/products',
-    method: data.id ? 'put' : 'post',
-    data
-  });
+export function fetchGoods(params: PageParams & { status?: GoodStatus; keyword?: string }) {
+  return request<PageResult<GoodListItem>>({ url: '/admin/goods', params });
 }
 
-export function updateProductStatus(id: string, status: ProductItem['status']) {
-  return request<void>({
-    url: `/admin/mall/products/${id}/status`,
-    method: 'put',
-    data: { status }
-  });
+export function createGood(data: GoodFormPayload) {
+  return request<OperationResult>({ url: '/admin/goods', method: 'post', data: createGoodFormData(data) });
 }
 
-export function fetchRedemptions(params: PageParams) {
-  return request<PageResult<RedemptionItem>>({
-    url: '/admin/mall/redemptions',
-    params
-  });
+export function updateGood(id: number, data: GoodFormPayload) {
+  return request<OperationResult>({ url: `/admin/goods/${id}`, method: 'put', data: createGoodFormData(data) });
 }
 
-export function verifyRedemption(code: string) {
-  return request<void>({
-    url: '/admin/mall/redemptions/verify',
-    method: 'post',
-    data: { code }
-  });
+export function deleteGood(id: number) {
+  return request<OperationResult>({ url: `/admin/goods/${id}`, method: 'delete' });
+}
+
+export function updateGoodStatus(id: number, status: GoodStatus) {
+  return updateGood(id, { status });
+}
+
+export function updateGoodStock(id: number, stock: number) {
+  return updateGood(id, { stock });
+}
+
+export function fetchExchanges(
+  params: PageParams & {
+    status?: ExchangeStatus;
+    /** 按兑换记录 ID 搜索 */
+    keyword?: string;
+    user_keyword?: string;
+    good_keyword?: string;
+  }
+) {
+  return request<PageResult<ExchangeItem>>({ url: '/admin/exchange', params });
+}
+
+export function verifyExchange(exchangeId: number, action: 'verify' | 'cancel') {
+  return request<OperationResult>({ url: `/admin/exchange/${exchangeId}/verify`, method: 'put', data: { action } });
 }

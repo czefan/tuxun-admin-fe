@@ -28,44 +28,8 @@ declare namespace Env {
     readonly VITE_ICON_LOCAL_PREFIX: 'icon-local';
     /** backend service base url */
     readonly VITE_SERVICE_BASE_URL: string;
-    /**
-     * success code of backend service
-     *
-     * when the code is received, the request is successful
-     */
-    readonly VITE_SERVICE_SUCCESS_CODE: string;
-    /**
-     * logout codes of backend service
-     *
-     * when the code is received, the user will be logged out and redirected to login page
-     *
-     * use "," to separate multiple codes
-     */
-    readonly VITE_SERVICE_LOGOUT_CODES: string;
-    /**
-     * modal logout codes of backend service
-     *
-     * when the code is received, the user will be logged out by displaying a modal
-     *
-     * use "," to separate multiple codes
-     */
-    readonly VITE_SERVICE_MODAL_LOGOUT_CODES: string;
-    /**
-     * token expired codes of backend service
-     *
-     * when the code is received, it will refresh the token and resend the request
-     *
-     * use "," to separate multiple codes
-     */
-    readonly VITE_SERVICE_EXPIRED_TOKEN_CODES: string;
-    /** when the route mode is static, the defined super role */
-    readonly VITE_STATIC_SUPER_ROLE: string;
-    /**
-     * other backend service base url
-     *
-     * the value is a json
-     */
-    readonly VITE_OTHER_SERVICE_BASE_URL: string;
+    /** Optional local development proxy target */
+    readonly VITE_SERVICE_PROXY_TARGET?: string;
     /**
      * Whether to enable the http proxy
      *
@@ -110,6 +74,16 @@ declare namespace Env {
     readonly VITE_PROXY_LOG?: CommonType.YesOrNo;
     /** The launch editor */
     readonly VITE_DEVTOOLS_LAUNCH_EDITOR?: import('vite-plugin-vue-devtools').VitePluginVueDevToolsOptions['launchEditor'];
+    /** Whether to enable MSW Mock mode */
+    readonly VITE_ENABLE_MOCK?: CommonType.YesOrNo;
+    /** MSW Mock 接口统一延迟（毫秒），用于验证 loading 态；0 或留空为不延迟 */
+    readonly VITE_MOCK_DELAY?: string;
+    /** 高德地图 JSAPI key（Web 端 / JS API 类型），为空则地图选点降级为手填经纬度 */
+    readonly VITE_AMAP_KEY?: string;
+    /** 高德安全密钥，jscode 会内联进前端产物，仅用于开发 / 内网环境 */
+    readonly VITE_AMAP_SECURITY_JSCODE?: string;
+    /** 高德代理服务地址（后端转发 restapi.amap.com 并附加 jscode），生产环境用，优先级高于 jscode */
+    readonly VITE_AMAP_SERVICE_HOST?: string;
   }
 }
 
