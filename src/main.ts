@@ -5,9 +5,12 @@ import { setupAppVersionNotification, setupDayjs, setupIconifyOffline, setupLoad
 import { setupStore } from './store';
 import { setupRouter } from './router';
 import { getLocale, setupI18n } from './locales';
+import { enableMocking } from './mocks/enable';
 import App from './App.vue';
 
 async function setupApp() {
+  await enableMocking();
+
   setupLoading();
 
   setupNProgress();

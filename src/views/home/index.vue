@@ -1,48 +1,69 @@
 <script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { fetchAdminStats } from '@/service/api';
 import { useRouterPush } from '@/hooks/common/router';
+import { useAuthStore } from '@/store/modules/auth';
 
 interface OverviewCard {
   title: string;
-  value: string;
+  value: number | null;
   description: string;
+  route: 'review_photos' | 'review_attempts' | 'review_comments' | 'operation_feedback' | 'system_users';
 }
 
-interface WorkItem {
-  title: string;
-  description: string;
-  tag: string;
-  type: 'warning' | 'error' | 'info' | 'success';
-}
-
-const overviewCards: OverviewCard[] = [
-  { title: '待审核投稿', value: '18', description: '用户投稿题目等待人工确认' },
-  { title: '待审核答题', value: '42', description: '现场答题照片与定位待核验' },
-  { title: '反馈相关', value: '7', description: '用户意见反馈与纠错' },
-  { title: '注册用户', value: '1,284', description: '当前累计注册用户' }
-];
-
-const workItems: WorkItem[] = [
-  {
-    title: '优先处理投稿与答题审核',
-    description: '审核流决定前台内容是否能公开，建议作为每日运营第一入口。',
-    tag: '审核管理',
-    type: 'warning'
-  },
-  {
-    title: '关注用户意见反馈',
-    description: '反馈与纠错直接影响用户体验，建议每日定时跟进与回复。',
-    tag: '反馈管理',
-    type: 'info'
-  },
-  {
-    title: '维护商城库存与核销',
-    description: '积分商品库存、上下架和核销状态会直接影响用户兑换体验。',
-    tag: '商城管理',
-    type: 'success'
-  }
-];
-
+const authStore = useAuthStore();
 const { routerPushByKey } = useRouterPush();
+const loading = ref(false);
+const error = ref(false);
+const alive = ref(true);
+const counts = ref({ photos: null, attempts: null, comments: null, feedback: null, users: null } as Record<
+  'photos' | 'attempts' | 'comments' | 'feedback' | 'users',
+  number | null
+>);
+
+const cards = computed<OverviewCard[]>(() => [
+  { title: '待审核投稿', value: counts.value.photos, description: '等待人工确认的机位投稿', route: 'review_photos' },
+  {
+    title: '待审核答题',
+    value: counts.value.attempts,
+    description: '等待判断答题结果的记录',
+    route: 'review_attempts'
+  },
+  { title: '待审核评论', value: counts.value.comments, description: '等待内容审核的评论', route: 'review_comments' },
+  {
+    title: '待处理反馈',
+    value: counts.value.feedback,
+    description: '等待管理员解决的用户反馈',
+    route: 'operation_feedback'
+  },
+  { title: '用户总数', value: counts.value.users, description: '当前可查询到的全部用户', route: 'system_users' }
+]);
+
+async function loadOverview() {
+  loading.value = true;
+  error.value = false;
+
+  const { data: stats, error: err } = await fetchAdminStats();
+
+  if (!alive.value) return;
+
+  if (stats) {
+    counts.value = {
+      photos: stats.pending_photo_count ?? null,
+      attempts: stats.pending_attempt_count ?? null,
+      comments: stats.pending_comment_count ?? null,
+      feedback: stats.pending_feedback_count ?? null,
+      users: stats.user_count ?? null
+    };
+  }
+  error.value = Boolean(err);
+  loading.value = false;
+}
+
+onMounted(loadOverview);
+onBeforeUnmount(() => {
+  alive.value = false;
+});
 </script>
 
 <template>
@@ -51,50 +72,41 @@ const { routerPushByKey } = useRouterPush();
       <div class="flex flex-wrap items-center justify-between gap-16px">
         <div>
           <h2 class="m-0 text-22px font-semibold">图寻后台工作台</h2>
-          <p class="mt-8px text-14px text-#666">面向机位投稿审核、内容安全、通知运营、商城与奖品核销。</p>
+          <p class="mb-0 mt-8px text-14px text-#777">
+            {{ authStore.userInfo.nickname || authStore.userInfo.username }}，当前权限为 Level
+            {{ authStore.userInfo.level }}。
+          </p>
         </div>
         <NSpace>
-          <NButton type="primary" @click="routerPushByKey('review_answer')">答题审核</NButton>
-          <NButton @click="routerPushByKey('notice_list-create')">发布通知</NButton>
-          <NButton @click="routerPushByKey('mall_redemption')">奖品核销</NButton>
+          <NButton :loading="loading" @click="loadOverview">刷新待办</NButton>
+          <NButton type="primary" @click="routerPushByKey('operation_notice')">发布通知</NButton>
         </NSpace>
       </div>
     </NCard>
 
+    <NAlert v-if="error" type="warning" title="部分统计加载失败">
+      已保留成功返回的统计结果，可点击“刷新待办”重试。
+    </NAlert>
+
     <NGrid :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
-      <NGi v-for="item in overviewCards" :key="item.title" span="24 s:12 l:6">
-        <NCard :bordered="false" class="card-wrapper">
-          <NStatistic :label="item.title" :value="item.value" />
-          <p class="mb-0 mt-8px text-13px text-#888">{{ item.description }}</p>
+      <NGi v-for="card in cards" :key="card.title" span="24 s:12 l:6">
+        <NCard :bordered="false" class="card-wrapper cursor-pointer" hoverable @click="routerPushByKey(card.route)">
+          <NStatistic :label="card.title" :value="card.value ?? '--'" />
+          <p class="mb-0 mt-8px text-13px text-#888">{{ card.description }}</p>
         </NCard>
       </NGi>
     </NGrid>
 
-    <NGrid :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
-      <NGi span="24 l:14">
-        <NCard title="今日处理重点" :bordered="false" class="card-wrapper">
-          <NList>
-            <NListItem v-for="item in workItems" :key="item.title">
-              <NThing :title="item.title" :description="item.description">
-                <template #avatar>
-                  <NTag :type="item.type" round>{{ item.tag }}</NTag>
-                </template>
-              </NThing>
-            </NListItem>
-          </NList>
-        </NCard>
-      </NGi>
-      <NGi span="24 l:10">
-        <NCard title="后台模块" :bordered="false" class="card-wrapper">
-          <NSpace vertical>
-            <NAlert type="warning" title="审核管理">投稿审核、答题照片与定位真实性审核。</NAlert>
-            <NAlert type="info" title="官方运营">官方题目、系统通知和活动运营配置。</NAlert>
-            <NAlert type="info" title="反馈管理">处理用户意见反馈与纠错内容。</NAlert>
-            <NAlert type="success" title="用户管理">查看用户基础信息、积分和账号状态。</NAlert>
-            <NAlert type="success" title="商城管理">商城商品和奖品核销。</NAlert>
-          </NSpace>
-        </NCard>
-      </NGi>
-    </NGrid>
+    <NCard :bordered="false" class="card-wrapper" title="首期后台能力">
+      <NGrid :x-gap="12" :y-gap="12" responsive="screen" item-responsive>
+        <NGi span="24 m:8">
+          <NAlert type="warning" title="审核管理">投稿、答题与评论审核均直接读取待办接口。</NAlert>
+        </NGi>
+        <NGi span="24 m:8"><NAlert type="info" title="运营管理">活动、通知和反馈只保留后端已有能力。</NAlert></NGi>
+        <NGi span="24 m:8">
+          <NAlert type="success" title="商城管理">奖品和兑换记录的写操作完成后重新读取后端数据。</NAlert>
+        </NGi>
+      </NGrid>
+    </NCard>
   </NSpace>
 </template>
