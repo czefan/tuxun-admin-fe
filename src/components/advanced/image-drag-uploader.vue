@@ -63,10 +63,19 @@ const displayUrl = computed(() => {
 
 function handleBeforeUpload(data: { file: UploadFileInfo }) {
   const file = data.file.file;
-  if (file && file.size > props.maxSizeMb * 1024 * 1024) {
+  if (!file) return true;
+
+  // accept 只是文件选择器的过滤条件，拖拽进来的文件绕得过去，必须在这里兜住
+  const allowedTypes = props.accept.split(',').map(item => item.trim());
+  if (allowedTypes.length > 0 && !allowedTypes.includes(file.type)) {
+    message.error('图片仅支持 jpg/png 格式');
+    return false;
+  }
+  if (file.size > props.maxSizeMb * 1024 * 1024) {
     message.error(`图片大小不能超过 ${props.maxSizeMb}MB`);
     return false;
   }
+
   isRemovedExistImage.value = false;
   return true;
 }

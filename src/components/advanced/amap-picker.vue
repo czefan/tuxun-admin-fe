@@ -218,9 +218,23 @@ onBeforeUnmount(() => {
       </NAlert>
       <div class="flex items-center gap-10px">
         <span class="text-13px text-#666 shrink-0">经度</span>
-        <NInputNumber v-model:value="longitude" :precision="6" :show-button="false" class="flex-1 min-w-0" />
+        <NInputNumber
+          v-model:value="longitude"
+          :precision="6"
+          :min="-180"
+          :max="180"
+          :show-button="false"
+          class="flex-1 min-w-0"
+        />
         <span class="text-13px text-#666 shrink-0">纬度</span>
-        <NInputNumber v-model:value="latitude" :precision="6" :show-button="false" class="flex-1 min-w-0" />
+        <NInputNumber
+          v-model:value="latitude"
+          :precision="6"
+          :min="-90"
+          :max="90"
+          :show-button="false"
+          class="flex-1 min-w-0"
+        />
       </div>
     </template>
   </div>
@@ -258,9 +272,23 @@ onBeforeUnmount(() => {
       <p v-if="address" class="m-0 text-12px text-#666 leading-relaxed">{{ address }}</p>
       <div class="flex items-center gap-10px">
         <span class="text-13px text-#666 shrink-0">经度</span>
-        <NInputNumber v-model:value="longitude" :precision="6" :show-button="false" class="flex-1 min-w-0" />
+        <NInputNumber
+          v-model:value="longitude"
+          :precision="6"
+          :min="-180"
+          :max="180"
+          :show-button="false"
+          class="flex-1 min-w-0"
+        />
         <span class="text-13px text-#666 shrink-0">纬度</span>
-        <NInputNumber v-model:value="latitude" :precision="6" :show-button="false" class="flex-1 min-w-0" />
+        <NInputNumber
+          v-model:value="latitude"
+          :precision="6"
+          :min="-90"
+          :max="90"
+          :show-button="false"
+          class="flex-1 min-w-0"
+        />
       </div>
     </template>
   </div>
