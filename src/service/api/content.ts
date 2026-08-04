@@ -1,15 +1,10 @@
+import type { ContentBlock } from '../contract/types';
 import { request } from '../request';
 import type { OperationResult } from './types';
 
 export type ContentKey = 'popup' | 'score_rules' | 'help';
 
-export interface ContentBlock {
-  key: ContentKey;
-  content: string;
-  related_id?: number;
-  version: number;
-  updated_at: string | null;
-}
+export type { ContentBlock };
 
 export interface UpdateContentPayload {
   content: string;

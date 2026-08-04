@@ -1,23 +1,12 @@
+import type { AdminExchangeRecord, GoodItem } from '../contract/types';
 import { request } from '../request';
 import { appendFormValue } from './types';
-import type { GoodBrief, OperationResult, PageParams, PageResult, UserBrief } from './types';
+import type { GoodBrief, OperationResult, PageParams, PageResult } from './types';
 
 export type GoodStatus = 'in_store' | 'out_store';
 export type ExchangeStatus = 'pending' | 'verified' | 'cancelled';
 
-export interface GoodListItem {
-  id: number;
-  name: string;
-  description: string;
-  thumb_url: string;
-  image_url: string;
-  /** 兑换所需积分 */
-  score_price: number;
-  stock: number;
-  status: GoodStatus;
-  created_at: string;
-}
-
+export type GoodListItem = GoodItem;
 export type GoodDetail = GoodListItem;
 
 export interface GoodFormPayload {
@@ -26,22 +15,13 @@ export interface GoodFormPayload {
   /** 兑换所需积分 */
   score_price?: number;
   stock?: number;
-  image?: File;
+  image_file?: File;
   status?: GoodStatus;
 }
 
 export type { GoodBrief };
 
-export interface ExchangeItem {
-  id: number;
-  user: UserBrief;
-  good: GoodBrief;
-  quantity: number;
-  score_cost: number;
-  status: ExchangeStatus;
-  exchange_at: string | null;
-  created_at: string;
-}
+export type ExchangeItem = AdminExchangeRecord;
 
 function createGoodFormData(data: Partial<GoodFormPayload>) {
   const formData = new FormData();
@@ -49,7 +29,7 @@ function createGoodFormData(data: Partial<GoodFormPayload>) {
   if (data.description !== undefined) appendFormValue(formData, 'description', data.description);
   if (data.score_price !== undefined) appendFormValue(formData, 'score_price', data.score_price);
   if (data.stock !== undefined) appendFormValue(formData, 'stock', data.stock);
-  if (data.image) appendFormValue(formData, 'image', data.image);
+  if (data.image_file) appendFormValue(formData, 'image_file', data.image_file);
   if (data.status !== undefined) appendFormValue(formData, 'status', data.status);
   return formData;
 }
@@ -85,6 +65,7 @@ export function fetchExchanges(
     keyword?: string;
     user_keyword?: string;
     good_keyword?: string;
+    verify_code?: string;
   }
 ) {
   return request<PageResult<ExchangeItem>>({ url: '/admin/exchange', params });

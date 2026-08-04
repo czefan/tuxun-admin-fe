@@ -1,5 +1,6 @@
+import type { AdminStats, UserSummary } from '../contract/types';
 import { request } from '../request';
-import type { OperationResult, PageParams, PageResult, UserStatus, UserSummary } from './types';
+import type { OperationResult, PageParams, PageResult, UserStatus } from './types';
 
 export interface FetchUserQueryParams extends PageParams {
   keyword?: string;
@@ -7,18 +8,7 @@ export interface FetchUserQueryParams extends PageParams {
   level?: number;
 }
 
-export interface AdminStats {
-  /** 全站用户总数（含被封禁账号与 Level 2/3） */
-  user_count: number;
-  /** 待审核投稿数 */
-  pending_photo_count: number;
-  /** 待审核作答数 */
-  pending_attempt_count: number;
-  /** 待审核评论数 */
-  pending_comment_count: number;
-  /** 待处理反馈数 */
-  pending_feedback_count: number;
-}
+export type { AdminStats };
 
 export function searchUsers(params: FetchUserQueryParams) {
   return request<PageResult<UserSummary>>({ url: '/admin/users', params });

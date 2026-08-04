@@ -1,3 +1,4 @@
+import type { AdminAnnouncement, AdminAnnouncementListItem } from '../contract/types';
 import { request } from '../request';
 import { appendFormValue } from './types';
 import type { OperationResult, PageParams, PageResult } from './types';
@@ -6,26 +7,8 @@ import type { OperationResult, PageParams, PageResult } from './types';
 // 管理端通知类型（无用户已读态，有 read_count）
 // ──────────────────────────────────────────
 
-export interface AdminAnnouncementListItem {
-  id: number;
-  title: string;
-  content_preview: string;
-  created_at: string;
-  /** 已读该通知的去重用户数 */
-  read_count: number;
-}
-
-export interface AdminAnnouncementDetail {
-  id: number;
-  title: string;
-  content: string;
-  image_url?: string;
-  related_type?: 'activity';
-  related_id?: number;
-  created_at: string;
-  /** 已读该通知的去重用户数 */
-  read_count: number;
-}
+export type { AdminAnnouncementListItem };
+export type AdminAnnouncementDetail = AdminAnnouncement;
 
 export interface AnnouncementFormPayload {
   title?: string;

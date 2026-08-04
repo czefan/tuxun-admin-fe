@@ -1,36 +1,12 @@
+import type { AdminFeedbackListItem, FeedbackDetail, FeedbackMedia } from '../contract/types';
 import { request } from '../request';
-import type { OperationResult, PageParams, PageResult, UserBrief } from './types';
+import type { OperationResult, PageParams, PageResult } from './types';
 
 export type FeedbackType = 1 | 2 | 3 | 4;
 export type FeedbackStatus = 'pending' | 'resolved';
 
-export interface FeedbackListItem {
-  id: number;
-  user: UserBrief;
-  title: string;
-  type: FeedbackType;
-  status: FeedbackStatus;
-  created_at: string;
-}
-
-export interface FeedbackMedia {
-  id: number;
-  url: string;
-  media_type: number;
-}
-
-export interface FeedbackDetail {
-  id: number;
-  user_id?: number;
-  user: UserBrief;
-  title: string;
-  content: string;
-  type: FeedbackType;
-  phone?: string;
-  status: FeedbackStatus;
-  medias: FeedbackMedia[];
-  created_at: string;
-}
+export type FeedbackListItem = AdminFeedbackListItem;
+export type { FeedbackDetail, FeedbackMedia };
 
 export function fetchFeedbackList(
   params: PageParams & { type?: FeedbackType; status?: FeedbackStatus; keyword?: string; user_keyword?: string }

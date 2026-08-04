@@ -1,6 +1,7 @@
+import type { ActivityCard } from '../contract/types';
 import { request } from '../request';
 import { appendFormValue } from './types';
-import type { ActivityCard, OperationResult, PageParams, PageResult } from './types';
+import type { OperationResult, PageParams, PageResult } from './types';
 
 export type ActivityListItem = ActivityCard;
 

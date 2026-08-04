@@ -1,46 +1,17 @@
+import type { AdminAttemptListItem, AdminCommentListItem, AdminPhotoListItem } from '../contract/types';
 import { request } from '../request';
 import type {
-  AdminPhotoListItem,
   AttemptStatus,
-  Location,
   OperationResult,
   PageParams,
   PageResult,
   ReviewActionPayload,
-  ReviewStatus,
-  UserBrief
+  ReviewStatus
 } from './types';
 
 export type PhotoReviewItem = AdminPhotoListItem;
-
-export interface AttemptReviewItem {
-  id: number;
-  user: UserBrief;
-  photo: {
-    id: number;
-    title: string;
-    thumb_url: string;
-    location: Location;
-  };
-  guess_image_url: string;
-  guess_location: Location;
-  status: AttemptStatus;
-  reject_reason: string | null;
-  created_at: string;
-}
-
-export interface CommentReviewItem {
-  id: number;
-  photo: {
-    id: number;
-    title: string;
-  };
-  user: UserBrief;
-  content: string;
-  status: ReviewStatus;
-  reject_reason?: string;
-  created_at: string;
-}
+export type AttemptReviewItem = AdminAttemptListItem;
+export type CommentReviewItem = AdminCommentListItem;
 
 export function fetchPhotoReviews(
   params: PageParams & {
