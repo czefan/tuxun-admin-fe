@@ -164,8 +164,7 @@ export const reviewHandlers = [
     }
     if (userKeyword) {
       filtered = filtered.filter(
-        item =>
-          String(item.user.id).includes(userKeyword) || item.user.nickname.toLowerCase().includes(userKeyword)
+        item => String(item.user.id).includes(userKeyword) || item.user.nickname.toLowerCase().includes(userKeyword)
       );
     }
     filtered = [...filtered].sort(

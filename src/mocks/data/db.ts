@@ -581,7 +581,12 @@ class MockDatabase {
       id: 3,
       verify_code: 'EXCH8883',
       user: makeUser(11, '校园摄影狂'),
-      good: { id: 2, name: '二十个字极限长度测试奖品名称全套礼盒大包', score_price: 99999, image: makeSquareMedia('g2') },
+      good: {
+        id: 2,
+        name: '二十个字极限长度测试奖品名称全套礼盒大包',
+        score_price: 99999,
+        image: makeSquareMedia('g2')
+      },
       quantity: 1,
       score_cost: 99999,
       status: 'pending',
@@ -591,8 +596,19 @@ class MockDatabase {
   ];
 
   contentBlocks: Record<string, MockContentBlock> = {
-    popup: { key: 'popup', content: '<p>欢迎使用图寻！</p>', related_id: 1, version: 1, updated_at: '2026-07-20T10:00:00Z' },
-    score_rules: { key: 'score_rules', content: '<p>积分规则明细。</p>', version: 1, updated_at: '2026-07-20T10:00:00Z' },
+    popup: {
+      key: 'popup',
+      content: '<p>欢迎使用图寻！</p>',
+      related_id: 1,
+      version: 1,
+      updated_at: '2026-07-20T10:00:00Z'
+    },
+    score_rules: {
+      key: 'score_rules',
+      content: '<p>积分规则明细。</p>',
+      version: 1,
+      updated_at: '2026-07-20T10:00:00Z'
+    },
     help: { key: 'help', content: '<p>常见玩法 FAQ 帮助。</p>', version: 1, updated_at: '2026-07-20T10:00:00Z' }
   };
 
@@ -602,7 +618,16 @@ class MockDatabase {
 
   findUser(id: number): UserSummary {
     const found = this.users.find(u => u.id === id);
-    if (found) return { id: found.id, netid: found.netid, username: found.username, nickname: found.nickname, avatar: found.avatar, level: found.level, status: found.status };
+    if (found)
+      return {
+        id: found.id,
+        netid: found.netid,
+        username: found.username,
+        nickname: found.nickname,
+        avatar: found.avatar,
+        level: found.level,
+        status: found.status
+      };
     return makeUser(id, `用户_${id}`);
   }
 

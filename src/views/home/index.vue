@@ -92,9 +92,7 @@ function openVerifyModal() {
               <SvgIcon icon="ri:qr-scan-2-line" class="text-18px" />
             </template>
           </NButton>
-          <NButton type="primary" @click="routerPushByKey('operation_questions')">
-            新建题目
-          </NButton>
+          <NButton type="primary" @click="routerPushByKey('operation_questions')">新建题目</NButton>
           <NButton type="primary" @click="routerPushByKey('operation_notice')">发布通知</NButton>
         </NSpace>
       </div>
