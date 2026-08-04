@@ -6,7 +6,7 @@ export function createEmptyUserInfo(): Api.Auth.UserInfo {
     netid: '',
     username: '',
     nickname: '',
-    avatar_url: '',
+    avatar: '',
     score_count: 0,
     level: 0,
     nickname_edits_remaining: 0,

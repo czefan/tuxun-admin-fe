@@ -74,8 +74,8 @@ function handleDropdown(key: DropdownKey) {
     <div>
       <ButtonIcon class="px-12px">
         <NImage
-          v-if="authStore.userInfo.avatar_url"
-          :src="authStore.userInfo.avatar_url"
+          v-if="authStore.userInfo.avatar"
+          :src="authStore.userInfo.avatar"
           width="28"
           height="28"
           object-fit="cover"

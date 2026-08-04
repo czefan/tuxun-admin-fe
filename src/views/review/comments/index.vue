@@ -211,9 +211,6 @@ const columns = computed<DataTableColumns<CommentReviewItem>>(() => [
           </NDescriptionsItem>
           <NDescriptionsItem label="题目">#{{ selected.photo?.id }} {{ selected.photo?.title }}</NDescriptionsItem>
           <NDescriptionsItem label="评论内容">{{ selected.content }}</NDescriptionsItem>
-          <NDescriptionsItem v-if="selected.status === 'rejected' && selected.reject_reason" label="驳回理由">
-            {{ selected.reject_reason }}
-          </NDescriptionsItem>
         </NDescriptions>
       </div>
     </NModal>

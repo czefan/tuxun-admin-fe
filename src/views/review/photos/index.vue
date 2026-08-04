@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, h, onMounted, ref } from 'vue';
 import { NDescriptions, NDescriptionsItem, NInput, NModal, NSelect, NSpace, type DataTableColumns } from 'naive-ui';
+import { toImageVM } from '@/service/contract/types';
 
 import type { PhotoReviewItem, ReviewStatus } from '@/service/api';
 import { fetchAdminActivityList, fetchAllPages, fetchPhotoReviews, reviewPhoto } from '@/service/api';
@@ -122,7 +123,7 @@ async function submitReview(reason: string) {
 }
 
 const columns = computed<DataTableColumns<PhotoReviewItem>>(() => [
-  createThumbColumn<PhotoReviewItem>(),
+  createThumbColumn<PhotoReviewItem>({ imageSize: 60, width: 76 }),
 
   {
     title: '题目信息',
@@ -244,7 +245,7 @@ onMounted(() => {
       <div v-if="selected" class="space-y-4">
         <AmapViewModal
           inline
-          :image-url="selected.image_url || selected.thumb_url"
+          :image-url="toImageVM(selected.image, 'origin').url"
           :longitude="selected.location?.longitude"
           :latitude="selected.location?.latitude"
           marker-name="投稿位置"

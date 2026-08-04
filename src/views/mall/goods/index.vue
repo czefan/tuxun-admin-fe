@@ -16,7 +16,8 @@ import {
   type UploadFileInfo
 } from 'naive-ui';
 import type { GoodFormPayload, GoodListItem, GoodStatus } from '@/service/api';
-import { createGood, deleteGood, fetchGoods, updateGood, updateGoodStatus, updateGoodStock } from '@/service/api';
+import { toImageVM } from '@/service/contract/types';
+import { createGood, deleteGood, fetchGoods, updateGood, updateGoodStatus, updateGoodStock } from '@/service/api/mall';
 import { useTableSearch } from '@/hooks/common/table-search';
 import { useOperatingKeys } from '@/hooks/common/operating-keys';
 import TableSearchBar from '@/components/advanced/table-search-bar.vue';
@@ -88,7 +89,7 @@ function openCreateModal() {
 function openEditModal(row: GoodListItem) {
   formModalType.value = 'edit';
   currentGoodId.value = row.id;
-  imageUrl.value = row.image_url || row.thumb_url || '';
+  imageUrl.value = toImageVM(row.image, 'origin').url;
   imageFiles.value = [];
   goodFormModel.value = {
     name: row.name || '',
@@ -136,7 +137,7 @@ async function doFormSubmit() {
     name: goodFormModel.value.name.trim(),
     description: goodFormModel.value.description.trim(),
     score_price: goodFormModel.value.score_price,
-    image: imageFiles.value[0]?.file || undefined
+    image_file: imageFiles.value[0]?.file || undefined
   };
 
   formSubmitting.value = true;

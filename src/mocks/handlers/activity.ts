@@ -1,4 +1,5 @@
 import { http } from 'msw';
+import type { ActivityCard } from '@/service/contract/types';
 import { mockDb } from '../data/db';
 import { checkAdminAuth, mockNotFound, mockSuccess } from '../response';
 
@@ -20,7 +21,8 @@ export const activityHandlers = [
     );
 
     const start = (page - 1) * pageSize;
-    return mockSuccess({ total: filtered.length, list: filtered.slice(start, start + pageSize) });
+    const list: ActivityCard[] = filtered.slice(start, start + pageSize);
+    return mockSuccess({ total: filtered.length, list });
   }),
 
   http.get('/api/admin/activity', ({ request }) => {
@@ -55,7 +57,8 @@ export const activityHandlers = [
     );
 
     const start = (page - 1) * pageSize;
-    return mockSuccess({ total: filtered.length, list: filtered.slice(start, start + pageSize) });
+    const list: ActivityCard[] = filtered.slice(start, start + pageSize);
+    return mockSuccess({ total: filtered.length, list });
   }),
 
   http.post('/api/admin/activity', async ({ request }) => {
@@ -74,7 +77,13 @@ export const activityHandlers = [
       description,
       start_time: startTime,
       end_time: endTime,
-      cover_url: 'https://picsum.photos/800/400?random=' + Date.now(),
+      cover_image: {
+        thumb_url: `/api/photos/${mockDb.activities.length + 1}/image`,
+        origin_url: `/api/photos/${mockDb.activities.length + 1}/image`,
+        width: 800,
+        height: 600
+      },
+      photo_count: 0,
       created_at: new Date().toISOString()
     };
     mockDb.activities.unshift(newActivity);

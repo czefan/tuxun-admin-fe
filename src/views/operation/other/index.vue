@@ -69,9 +69,9 @@ const BLOCKS = [
 type BlockConfig = (typeof BLOCKS)[number];
 
 const blocks = ref<Record<ContentKey, ContentBlock>>({
-  popup: { key: 'popup', content: '', related_id: undefined, version: 0, updated_at: null },
-  score_rules: { key: 'score_rules', content: '', related_id: undefined, version: 0, updated_at: null },
-  help: { key: 'help', content: '', related_id: undefined, version: 0, updated_at: null }
+  popup: { key: 'popup', content: '', related_id: null, version: 0, updated_at: null },
+  score_rules: { key: 'score_rules', content: '', related_id: null, version: 0, updated_at: null },
+  help: { key: 'help', content: '', related_id: null, version: 0, updated_at: null }
 });
 
 const noticeOptions = ref<{ label: string; value: number }[]>([]);

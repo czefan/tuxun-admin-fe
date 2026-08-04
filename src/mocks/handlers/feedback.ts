@@ -1,4 +1,5 @@
 import { http } from 'msw';
+import type { AdminFeedbackListItem } from '@/service/contract/types';
 import { mockDb } from '../data/db';
 import { checkAdminAuth, mockNotFound, mockSuccess } from '../response';
 
@@ -12,19 +13,35 @@ export const feedbackHandlers = [
     const pageSize = Number(url.searchParams.get('page_size') || 10);
     const status = url.searchParams.get('status');
     const type = url.searchParams.get('type') ? Number(url.searchParams.get('type')) : undefined;
+    const keyword = (url.searchParams.get('keyword') || '').toLowerCase().trim();
+    const userKeyword = (url.searchParams.get('user_keyword') || '').toLowerCase().trim();
 
     let filtered = mockDb.feedbacks;
     if (status) filtered = filtered.filter(item => item.status === status);
     if (type !== undefined) filtered = filtered.filter(item => item.type === type);
+    if (keyword) {
+      filtered = filtered.filter(
+        item =>
+          String(item.id).includes(keyword) ||
+          item.title.toLowerCase().includes(keyword) ||
+          item.content.toLowerCase().includes(keyword)
+      );
+    }
+    if (userKeyword) {
+      filtered = filtered.filter(
+        item =>
+          item.phone.includes(userKeyword) ||
+          (item.user &&
+            (String(item.user.id).includes(userKeyword) || item.user.nickname.toLowerCase().includes(userKeyword)))
+      );
+    }
+
     filtered = [...filtered].sort(
       (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime() || b.id - a.id
     );
 
     const start = (page - 1) * pageSize;
-    const list = filtered.slice(start, start + pageSize).map(item => ({
-      ...item,
-      user: mockDb.findUser(item.user_id)
-    }));
+    const list: AdminFeedbackListItem[] = filtered.slice(start, start + pageSize);
     return mockSuccess({ total: filtered.length, list });
   }),
 
@@ -37,7 +54,7 @@ export const feedbackHandlers = [
     if (!feedback) return mockNotFound('未找到反馈详情');
     return mockSuccess({
       ...feedback,
-      user: feedback.user || mockDb.findUser(feedback.user_id)
+      media_file: feedback.medias && feedback.medias.length > 0 ? feedback.medias[0] : null
     });
   }),
 

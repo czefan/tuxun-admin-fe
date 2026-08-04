@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
-
 import { useRoute } from 'vue-router';
 import {
   NAlert,
@@ -10,7 +9,6 @@ import {
   NDescriptionsItem,
   NEmpty,
   NImage,
-  NImageGroup,
   NSpace,
   NSpin,
   NTag
@@ -18,6 +16,7 @@ import {
 
 import type { FeedbackDetail } from '@/service/api';
 import { fetchFeedbackDetail, updateFeedbackStatus } from '@/service/api';
+import { toImageVM } from '@/service/contract/types';
 import { useRouterPush } from '@/hooks/common/router';
 import { formatDateTime } from '@/utils/tuxun';
 import { renderUserInline } from '@/utils/table-columns';
@@ -123,7 +122,7 @@ onBeforeUnmount(() => {
           >
             <NDescriptionsItem label="标题" :span="2">{{ detail.title }}</NDescriptionsItem>
             <NDescriptionsItem label="用户">
-              <component :is="renderUserInline(detail.user, detail.user_id)" />
+              <component :is="renderUserInline(detail.user)" />
             </NDescriptionsItem>
             <NDescriptionsItem label="联系方式">{{ detail.phone || '-' }}</NDescriptionsItem>
 
@@ -146,20 +145,31 @@ onBeforeUnmount(() => {
         </NCard>
 
         <NCard :bordered="false" class="card-wrapper" title="反馈附件">
-          <NEmpty v-if="!detail.medias.length" description="暂无图片附件" />
-          <NImageGroup v-else>
-            <NSpace :size="16">
+          <NEmpty v-if="!detail.media_file" description="暂无附件" />
+          <div v-else-if="detail.media_file" class="p-2">
+            <div
+              v-if="detail.media_file.media_type === 1"
+              class="overflow-hidden rounded-8px border border-gray-200 dark:border-gray-700 shadow-xs bg-gray-100 dark:bg-gray-800"
+              :style="{
+                width: '240px',
+                aspectRatio: `${detail.media_file.width || 4} / ${detail.media_file.height || 3}`
+              }"
+            >
               <NImage
-                v-for="media in detail.medias"
-                :key="media.id"
-                :src="media.url"
-                width="180"
-                height="130"
+                :src="toImageVM(detail.media_file, 'thumb').url"
+                :preview-src="toImageVM(detail.media_file, 'origin').url"
+                width="240"
                 object-fit="cover"
-                class="rounded-8px border border-gray-200 dark:border-gray-700 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                class="w-full h-full cursor-pointer"
               />
-            </NSpace>
-          </NImageGroup>
+            </div>
+            <video
+              v-else-if="detail.media_file.media_type === 2"
+              :src="toImageVM(detail.media_file, 'origin').url"
+              controls
+              class="max-w-400px rounded-8px border border-gray-200 dark:border-gray-700 shadow-xs"
+            />
+          </div>
         </NCard>
 
         <NCard :bordered="false" class="card-wrapper">

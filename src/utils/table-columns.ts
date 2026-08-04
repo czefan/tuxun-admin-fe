@@ -2,6 +2,7 @@ import { h } from 'vue';
 import { NAvatar, NButton, NImage, NTag, type DataTableColumn } from 'naive-ui';
 
 import { formatDateTimeSplit } from '@/utils/tuxun';
+import { toImageVM } from '@/service/contract/types';
 
 /**
  * 1. 通用两行时间列生成器 (日期在上，时间在下)
@@ -46,7 +47,7 @@ export function createThumbColumn<T = any>(options?: {
   imageSize?: number;
 }): DataTableColumn<T> {
   const title = options?.title ?? '图片';
-  const key = options?.key ?? 'thumb_url';
+  const key = options?.key ?? 'image';
   const width = options?.width ?? 68;
   const imageSize = options?.imageSize ?? 52;
 
@@ -55,15 +56,38 @@ export function createThumbColumn<T = any>(options?: {
     key,
     width,
     render(row: any) {
-      const src = row[key] || row.thumb_url || row.image_url;
+      let val = row[key];
+      if (val && typeof val === 'object' && !('origin_url' in val) && !('thumb_url' in val)) {
+        val = val.image ?? val.cover_image ?? val.media_file ?? val;
+      }
+      const vm =
+        typeof val === 'object' ? toImageVM(val, 'thumb') : { url: val || '', width: 0, height: 0, aspectRatio: 1 };
+      const originVm = typeof val === 'object' ? toImageVM(val, 'origin') : vm;
+      const src = vm.url;
       return src
-        ? h(NImage, {
-            src,
-            width: imageSize,
-            height: imageSize,
-            objectFit: 'cover',
-            class: 'rounded-6px cursor-pointer shadow-xs'
-          })
+        ? h(
+            'div',
+            {
+              class:
+                'overflow-hidden rounded-6px bg-gray-100 dark:bg-gray-800 flex-shrink-0 flex items-center justify-center',
+              style: {
+                width: `${imageSize}px`,
+                height: `${imageSize}px`
+              }
+            },
+            [
+              h(NImage, {
+                src,
+                previewSrc: originVm.url,
+                width: imageSize,
+                height: imageSize,
+                objectFit: 'cover',
+                showToolbarTooltip: true,
+                imgProps: { class: 'rounded-6px' },
+                class: 'w-full h-full cursor-pointer shadow-xs rounded-6px overflow-hidden'
+              })
+            ]
+          )
         : '-';
     }
   };
@@ -123,8 +147,8 @@ export function createStatusColumn<T = any>(
  * 单元格渲染只服务于 createUserColumn，不对外导出；
  * 详情弹窗等非表格场景请用下面的 renderUserInline。
  */
-function renderUserCell(user?: { avatar_url?: string; nickname?: string; id?: number } | null, defaultUserId?: number) {
-  const avatarUrl = user?.avatar_url || '';
+function renderUserCell(user?: { avatar?: string; nickname?: string; id?: number } | null, defaultUserId?: number) {
+  const avatarUrl = user?.avatar || '';
   const nickname = user?.nickname || '未知用户';
   const userId = user?.id ?? defaultUserId ?? 0;
 
@@ -149,7 +173,7 @@ export function createUserColumn<T = any>(options?: {
   width?: number;
   minWidth?: number;
   maxWidth?: number;
-  getUser?: (row: T) => { avatar_url?: string; nickname?: string; id?: number } | null;
+  getUser?: (row: T) => { avatar?: string; nickname?: string; id?: number } | null;
   getUserId?: (row: T) => number;
 }): DataTableColumn<T> {
   const title = options?.title ?? '用户';
@@ -175,10 +199,10 @@ export function createUserColumn<T = any>(options?: {
  * 适用于详情 Modal / Descriptions 详情展现
  */
 export function renderUserInline(
-  user?: { avatar_url?: string; nickname?: string; id?: number } | null,
+  user?: { avatar?: string; nickname?: string; id?: number } | null,
   defaultUserId?: number
 ) {
-  const avatarUrl = user?.avatar_url || '';
+  const avatarUrl = user?.avatar || '';
   const nickname = user?.nickname || '未知';
   const userId = user?.id ?? defaultUserId ?? '-';
 

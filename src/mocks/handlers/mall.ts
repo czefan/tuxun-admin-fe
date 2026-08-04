@@ -1,4 +1,5 @@
 import { http } from 'msw';
+import type { AdminExchangeRecord, GoodItem } from '@/service/contract/types';
 import { mockDb } from '../data/db';
 import { checkAdminAuth, mockConflict, mockNotFound, mockSuccess } from '../response';
 
@@ -25,7 +26,8 @@ export const mallHandlers = [
     );
 
     const start = (page - 1) * pageSize;
-    return mockSuccess({ total: filtered.length, list: filtered.slice(start, start + pageSize) });
+    const list: GoodItem[] = filtered.slice(start, start + pageSize);
+    return mockSuccess({ total: filtered.length, list });
   }),
 
   http.get('/api/admin/goods', ({ request }) => {
@@ -52,7 +54,8 @@ export const mallHandlers = [
     );
 
     const start = (page - 1) * pageSize;
-    return mockSuccess({ total: filtered.length, list: filtered.slice(start, start + pageSize) });
+    const list: GoodItem[] = filtered.slice(start, start + pageSize);
+    return mockSuccess({ total: filtered.length, list });
   }),
 
   http.post('/api/admin/goods', async ({ request }) => {
@@ -70,8 +73,12 @@ export const mallHandlers = [
       id: mockDb.goods.length + 1,
       name,
       description,
-      thumb_url: 'https://picsum.photos/200?random=' + Date.now(),
-      image_url: 'https://picsum.photos/600?random=' + Date.now(),
+      image: {
+        thumb_url: `/api/photos/${mockDb.goods.length + 1}/image`,
+        origin_url: `/api/photos/${mockDb.goods.length + 1}/image`,
+        width: 800,
+        height: 600
+      },
       score_price: needScore,
       stock,
       status,
@@ -122,10 +129,12 @@ export const mallHandlers = [
     const userKeyword = (url.searchParams.get('user_keyword') || '').toLowerCase().trim();
     const goodKeyword = (url.searchParams.get('good_keyword') || '').toLowerCase().trim();
     const keyword = (url.searchParams.get('keyword') || '').trim();
+    const verifyCode = (url.searchParams.get('verify_code') || '').toUpperCase().trim();
 
     let filtered = mockDb.exchanges;
     if (status) filtered = filtered.filter(item => item.status === status);
     if (keyword) filtered = filtered.filter(item => String(item.id).includes(keyword));
+    if (verifyCode) filtered = filtered.filter(item => item.verify_code === verifyCode);
     if (userKeyword) {
       filtered = filtered.filter(
         item => String(item.user.id).includes(userKeyword) || item.user.nickname.toLowerCase().includes(userKeyword)
@@ -141,7 +150,8 @@ export const mallHandlers = [
     );
 
     const start = (page - 1) * pageSize;
-    return mockSuccess({ total: filtered.length, list: filtered.slice(start, start + pageSize) });
+    const list: AdminExchangeRecord[] = filtered.slice(start, start + pageSize);
+    return mockSuccess({ total: filtered.length, list });
   }),
 
   http.put('/api/admin/exchange/:id/verify', async ({ params, request }) => {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, h, onMounted, ref, watch } from 'vue';
-
 import { useRoute } from 'vue-router';
+import { toImageVM } from '@/service/contract/types';
 import {
   NButton,
   NDescriptions,
@@ -157,7 +157,7 @@ function openCreateModal() {
 function openEditModal(row: PhotoReviewItem) {
   modalType.value = 'edit';
   currentPhotoId.value = row.id;
-  editingImageUrl.value = row.image_url || row.thumb_url || '';
+  editingImageUrl.value = toImageVM(row.image, 'origin').url;
 
   imageFiles.value = [];
   formModel.value = {
@@ -249,7 +249,7 @@ async function doSubmit() {
 
 // 表格列定义
 const columns = computed<DataTableColumns<PhotoReviewItem>>(() => [
-  createThumbColumn<PhotoReviewItem>({ key: 'thumb_url' }),
+  createThumbColumn<PhotoReviewItem>({ key: 'image' }),
   {
     title: '题目信息',
     key: 'info',
@@ -481,7 +481,7 @@ onMounted(async () => {
       <div v-if="currentDetailRow" class="space-y-4">
         <AmapViewModal
           inline
-          :image-url="currentDetailRow.image_url || currentDetailRow.thumb_url"
+          :image-url="toImageVM(currentDetailRow.image, 'origin').url"
           :longitude="currentDetailRow.location?.longitude"
           :latitude="currentDetailRow.location?.latitude"
           marker-name="题目打卡点"

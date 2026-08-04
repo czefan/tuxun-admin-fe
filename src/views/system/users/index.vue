@@ -73,14 +73,14 @@ const columns = computed<DataTableColumns<UserSummary>>(() => [
   { title: 'ID', key: 'id', width: 70 },
   {
     title: '头像',
-    key: 'avatar_url',
+    key: 'avatar',
     width: 60,
     render(row) {
-      if (!row.avatar_url) {
+      if (!row.avatar) {
         return h(NAvatar, { round: true, size: 36 }, { default: () => (row.username || '用').slice(0, 1) });
       }
       return h(NImage, {
-        src: row.avatar_url,
+        src: row.avatar,
         width: 36,
         height: 36,
         objectFit: 'cover',

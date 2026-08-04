@@ -7,22 +7,14 @@ declare namespace Api {
   namespace Auth {
     type UserStatus = 'active' | 'banned';
 
-    interface LoginUserSummary {
-      id: number;
-      netid: string;
-      username: string;
-      nickname: string;
-      avatar_url: string;
-      level: number;
-      status: UserStatus;
-    }
+    type LoginUserSummary = import('@/service/contract/types').LoginResult;
 
     interface UserInfo {
       id: number;
       netid: string;
       username: string;
       nickname: string;
-      avatar_url: string;
+      avatar: string;
       score_count: number;
       level: number;
       /** 本月剩余昵称修改次数（上限 4，自然月初重置） */

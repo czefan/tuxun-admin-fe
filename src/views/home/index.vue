@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import VerifyCodeModal from '@/components/advanced/verify-code-modal.vue';
+import SvgIcon from '@/components/custom/svg-icon.vue';
 import { fetchAdminStats } from '@/service/api';
 import { useRouterPush } from '@/hooks/common/router';
 import { useAuthStore } from '@/store/modules/auth';
@@ -64,6 +66,12 @@ onMounted(loadOverview);
 onBeforeUnmount(() => {
   alive.value = false;
 });
+
+const verifyModalShow = ref(false);
+
+function openVerifyModal() {
+  verifyModalShow.value = true;
+}
 </script>
 
 <template>
@@ -78,14 +86,27 @@ onBeforeUnmount(() => {
           </p>
         </div>
         <NSpace>
-          <NButton :loading="loading" @click="loadOverview">刷新待办</NButton>
+          <NButton type="primary" secondary icon-placement="right" @click="openVerifyModal">
+            扫码核销
+            <template #icon>
+              <SvgIcon icon="ri:qr-scan-2-line" class="text-18px" />
+            </template>
+          </NButton>
+          <NButton type="primary" @click="routerPushByKey('operation_questions')">
+            新建题目
+          </NButton>
           <NButton type="primary" @click="routerPushByKey('operation_notice')">发布通知</NButton>
         </NSpace>
       </div>
     </NCard>
 
+    <VerifyCodeModal v-model:show="verifyModalShow" @success="loadOverview" />
+
     <NAlert v-if="error" type="warning" title="部分统计加载失败">
-      已保留成功返回的统计结果，可点击“刷新待办”重试。
+      <div class="flex items-center justify-between gap-12px">
+        <span>已保留成功返回的统计结果，您可尝试重新加载。</span>
+        <NButton size="small" type="warning" secondary :loading="loading" @click="loadOverview">重新加载</NButton>
+      </div>
     </NAlert>
 
     <NGrid :x-gap="16" :y-gap="16" responsive="screen" item-responsive>

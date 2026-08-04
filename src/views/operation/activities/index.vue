@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, h, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { toImageVM } from '@/service/contract/types';
 import {
   NButton,
   NDatePicker,
@@ -90,7 +91,7 @@ function openCreateModal() {
 function openEditModal(row: ActivityListItem) {
   modalType.value = 'edit';
   currentActivityId.value = row.id;
-  coverUrl.value = row.cover_url || '';
+  coverUrl.value = toImageVM(row.cover_image, 'origin').url;
   coverFiles.value = [];
   formModel.value = {
     title: row.title || '',
@@ -164,14 +165,18 @@ async function doSubmit() {
 }
 
 const columns = computed<DataTableColumns<ActivityListItem>>(() => [
-  createThumbColumn<ActivityListItem>({ title: '封面', key: 'cover_url', width: 90, imageSize: 56 }),
+  createThumbColumn<ActivityListItem>({ title: '封面', key: 'cover_image', width: 90, imageSize: 56 }),
   {
     title: '活动',
     key: 'info',
     minWidth: 200,
     render(row) {
+      const count = row.photo_count ?? 0;
       return h('div', { class: 'space-y-1' }, [
-        h('div', { class: 'font-medium text-14px text-gray-900 dark:text-gray-100' }, `#${row.id} ${row.title}`),
+        h('div', { class: 'font-medium text-14px text-gray-900 dark:text-gray-100' }, [
+          `#${row.id} ${row.title}`,
+          h('span', { class: 'text-gray-500 dark:text-gray-400 font-normal ml-4px' }, `(${count} 题)`)
+        ]),
         h('div', { class: 'text-12px text-gray-500 line-clamp-2' }, row.description || '无描述')
       ]);
     }

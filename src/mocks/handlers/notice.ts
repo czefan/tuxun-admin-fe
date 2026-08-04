@@ -1,7 +1,7 @@
 import { http } from 'msw';
 import { mockDb } from '../data/db';
-import { buildContentPreview, checkRichText, stripHtml } from '../rich-text';
 import { checkAdminAuth, mockError, mockSuccess } from '../response';
+import { buildContentPreview, checkRichText, stripHtml } from '../rich-text';
 
 export const noticeHandlers = [
   http.get('/api/announcements', ({ request }) => {
@@ -37,7 +37,7 @@ export const noticeHandlers = [
       id: notice.id,
       title: notice.title,
       content: notice.content,
-      image_url: notice.image_url,
+      image: notice.image,
       related_type: notice.related_type as any,
       related_id: notice.related_id,
       is_read: true,
@@ -69,7 +69,7 @@ export const noticeHandlers = [
       title: item.title,
       content_preview: buildContentPreview(item.content),
       created_at: item.created_at,
-      read_count: Math.floor(Math.random() * 50)
+      read_count: 10
     }));
     return mockSuccess({ total: filtered.length, list });
   }),
@@ -83,11 +83,11 @@ export const noticeHandlers = [
       id: notice.id,
       title: notice.title,
       content: notice.content,
-      image_url: notice.image_url,
+      image: notice.image || null,
       related_type: notice.related_type as any,
       related_id: notice.related_id,
       created_at: notice.created_at,
-      read_count: Math.floor(Math.random() * 50)
+      read_count: 10
     });
   }),
 

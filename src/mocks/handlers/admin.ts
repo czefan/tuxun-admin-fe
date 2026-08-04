@@ -53,11 +53,7 @@ export const adminHandlers = [
     );
 
     const start = (page - 1) * pageSize;
-    const list = filtered.slice(start, start + pageSize).map(item => ({
-      ...item,
-      username: item.username || item.name
-    }));
-    return mockSuccess({ total: filtered.length, list });
+    return mockSuccess({ total: filtered.length, list: filtered.slice(start, start + pageSize) });
   }),
 
   http.put('/api/admin/users/:id/status', async ({ params, request }) => {
@@ -109,13 +105,27 @@ export const adminHandlers = [
 
     const newPhoto = {
       id: mockDb.photos.length + 1001,
-      user_id: 1,
-      user_nickname: '官方图寻账号',
+      author: mockDb.findUser(1),
       title,
       description,
-      thumb_url: 'https://picsum.photos/300/200?random=' + Date.now(),
-      image_url: 'https://picsum.photos/800/600?random=' + Date.now(),
-      activity: { id: activityId, title: '图寻活动 #' + activityId, description: '活动描述' },
+      image: {
+        thumb_url: `/api/photos/${mockDb.photos.length + 1001}/image`,
+        origin_url: `/api/photos/${mockDb.photos.length + 1001}/image`,
+        width: 800,
+        height: 600
+      },
+      location: {
+        longitude: Number(formData.get('longitude') || 108.98374),
+        latitude: Number(formData.get('latitude') || 34.24623),
+        coord_type: (formData.get('coord_type') as 'gcj02' | 'wgs84' | 'bd09') || 'gcj02'
+      },
+      reject_reason: null,
+      activity: {
+        id: activityId,
+        title: '图寻活动 #' + activityId,
+        start_time: '2026-07-01T00:00:00Z',
+        end_time: '2026-08-31T23:59:59Z'
+      },
       solved: false,
       solves_count: 0,
       solved_count: 0,

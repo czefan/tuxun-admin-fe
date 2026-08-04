@@ -83,6 +83,7 @@ declare module 'vue' {
     SystemLogo: typeof import('./../components/common/system-logo.vue')['default']
     TableSearchBar: typeof import('./../components/advanced/table-search-bar.vue')['default']
     ThemeSchemaSwitch: typeof import('./../components/common/theme-schema-switch.vue')['default']
+    VerifyCodeModal: typeof import('./../components/advanced/verify-code-modal.vue')['default']
     WaveBg: typeof import('./../components/custom/wave-bg.vue')['default']
   }
 }
@@ -160,5 +161,6 @@ declare global {
   const SystemLogo: typeof import('./../components/common/system-logo.vue')['default']
   const TableSearchBar: typeof import('./../components/advanced/table-search-bar.vue')['default']
   const ThemeSchemaSwitch: typeof import('./../components/common/theme-schema-switch.vue')['default']
+  const VerifyCodeModal: typeof import('./../components/advanced/verify-code-modal.vue')['default']
   const WaveBg: typeof import('./../components/custom/wave-bg.vue')['default']
 }

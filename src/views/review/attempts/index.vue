@@ -1,15 +1,7 @@
 <script setup lang="ts">
 import { computed, h, ref } from 'vue';
-import {
-  NDescriptions,
-  NDescriptionsItem,
-  NImage,
-  NInput,
-  NModal,
-  NSelect,
-  NSpace,
-  type DataTableColumns
-} from 'naive-ui';
+import { toImageVM } from '@/service/contract/types';
+import { NDescriptions, NDescriptionsItem, NInput, NModal, NSelect, NSpace, type DataTableColumns } from 'naive-ui';
 import type { AttemptReviewItem, AttemptStatus } from '@/service/api';
 import { fetchAttemptReviews, reviewAttempt } from '@/service/api';
 import { useTableSearch } from '@/hooks/common/table-search';
@@ -120,18 +112,8 @@ async function submitReview(reason: string) {
 }
 
 const columns = computed<DataTableColumns<AttemptReviewItem>>(() => [
-  {
-    title: '原题',
-    key: 'photo_thumb_url',
-    width: 68,
-    render(row: AttemptReviewItem) {
-      const src = row.photo?.thumb_url;
-      return src
-        ? h(NImage, { src, width: 52, height: 52, objectFit: 'cover', class: 'rounded-6px cursor-pointer shadow-xs' })
-        : '-';
-    }
-  },
-  createThumbColumn<AttemptReviewItem>({ title: '答题图', key: 'guess_image_url' }),
+  createThumbColumn<AttemptReviewItem>({ title: '原题', key: 'photo', imageSize: 60, width: 76 }),
+  createThumbColumn<AttemptReviewItem>({ title: '作答', key: 'guess_image', imageSize: 60, width: 76 }),
   {
     title: '答题信息',
     key: 'info',
@@ -245,7 +227,7 @@ const columns = computed<DataTableColumns<AttemptReviewItem>>(() => [
             <div class="mb-2 font-medium text-13px text-gray-700 dark:text-gray-200">原题位置与图片</div>
             <AmapViewModal
               inline
-              :image-url="selected.photo?.thumb_url"
+              :image-url="toImageVM(selected.photo?.image, 'origin').url"
               :longitude="selected.photo?.location?.longitude"
               :latitude="selected.photo?.location?.latitude"
               marker-name="原题位置"
@@ -259,7 +241,7 @@ const columns = computed<DataTableColumns<AttemptReviewItem>>(() => [
             <div class="mb-2 font-medium text-13px text-gray-700 dark:text-gray-200">答题提交位置与图片</div>
             <AmapViewModal
               inline
-              :image-url="selected.guess_image_url"
+              :image-url="toImageVM(selected.guess_image, 'origin').url"
               :longitude="selected.guess_location?.longitude"
               :latitude="selected.guess_location?.latitude"
               marker-name="答题位置"

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { toImageVM } from '@/service/contract/types';
 import {
   NButton,
   NCard,
@@ -57,7 +58,7 @@ const model = ref({
   title: '',
   content: '',
   image_file: undefined as File | undefined,
-  image_url: '' as string | undefined,
+  image_src: '' as string | undefined,
   related_id: undefined as number | undefined,
   remove_image: false
 });
@@ -104,8 +105,8 @@ const previewImageSrc = computed(() => {
   if (model.value.image_file && localImageBlobUrl.value) {
     return localImageBlobUrl.value;
   }
-  if (model.value.image_url && !model.value.remove_image) {
-    return model.value.image_url;
+  if (model.value.image_src && !model.value.remove_image) {
+    return model.value.image_src;
   }
   return '';
 });
@@ -134,8 +135,8 @@ async function loadDetail() {
         title: d.title,
         content: d.content,
         image_file: undefined,
-        image_url: d.image_url,
-        related_id: d.related_id,
+        image_src: d.image ? toImageVM(d.image, 'origin').url : undefined,
+        related_id: d.related_id ?? undefined,
         remove_image: false
       };
     }
@@ -311,7 +312,7 @@ onMounted(() => {
               <NSpace vertical class="w-full" :size="12">
                 <ImageDragUploader
                   v-model:file-list="imageFiles"
-                  :image-url="model.image_url"
+                  :image-url="model.image_src"
                   width="220"
                   height="130"
                 />

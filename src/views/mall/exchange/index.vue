@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { h } from 'vue';
-import { NButton, NImage, NInput, NSelect, NSpace } from 'naive-ui';
+import { h, ref } from 'vue';
+import { NButton, NEllipsis, NImage, NInput, NSelect, NSpace } from 'naive-ui';
 import type { DataTableColumns } from 'naive-ui';
+import SvgIcon from '@/components/custom/svg-icon.vue';
 import { fetchExchanges, verifyExchange } from '@/service/api/mall';
 import type { ExchangeItem, ExchangeStatus } from '@/service/api/mall';
+import { toImageVM } from '@/service/contract/types';
 import { useTableSearch } from '@/hooks/common/table-search';
 import { useOperatingKeys } from '@/hooks/common/operating-keys';
 import TableSearchBar from '@/components/advanced/table-search-bar.vue';
@@ -37,7 +39,13 @@ const {
   pagination
 } = useTableSearch<
   ExchangeItem,
-  { status: ExchangeStatus | null; exchange_id_str: string; good_keyword: string; user_keyword: string }
+  {
+    status: ExchangeStatus | null;
+    exchange_id_str: string;
+    verify_code: string;
+    good_keyword: string;
+    user_keyword: string;
+  }
 >({
   fetchApi: async params => {
     const exId = params.exchange_id_str.trim();
@@ -46,13 +54,22 @@ const {
       page_size: params.page_size,
       status: params.status || undefined,
       keyword: exId || undefined,
+      verify_code: params.verify_code.trim() || undefined,
       good_keyword: params.good_keyword.trim() || undefined,
       user_keyword: params.user_keyword.trim() || undefined
     });
     return { data: res ? { list: res.list || [], total: res.total || 0 } : null, error };
   },
-  initialParams: { status: null, exchange_id_str: '', good_keyword: '', user_keyword: '' }
+  initialParams: {
+    status: null,
+    exchange_id_str: '',
+    verify_code: '',
+    good_keyword: '',
+    user_keyword: ''
+  }
 });
+
+const verifyModalShow = ref(false);
 
 function confirmAct(row: ExchangeItem, action: 'verify' | 'cancel') {
   if (isOperating(row.id)) return;
@@ -106,11 +123,25 @@ const columns: DataTableColumns<ExchangeItem> = [
     key: 'good',
     minWidth: 180,
     render(row) {
-      return h('div', { class: 'flex items-center gap-8px' }, [
-        row.good.thumb_url
-          ? h(NImage, { src: row.good.thumb_url, width: 36, height: 36, class: 'rounded object-cover' })
+      const vm = toImageVM(row.good?.image || row.good, 'thumb');
+      return h('div', { class: 'flex items-center gap-8px min-w-0' }, [
+        vm.url
+          ? h(NImage, {
+              src: vm.url,
+              previewSrc: toImageVM(row.good?.image || row.good, 'origin').url,
+              width: 40,
+              height: 40,
+              objectFit: 'cover',
+              showToolbarTooltip: true,
+              imgProps: { class: 'rounded-6px' },
+              class: 'rounded-6px flex-shrink-0 cursor-pointer shadow-xs overflow-hidden'
+            })
           : null,
-        h('div', { class: 'font-medium line-clamp-2' }, `#${row.good.id} ${row.good.name}`)
+        h(
+          NEllipsis,
+          { lineClamp: 2, class: 'font-medium min-w-0 flex-1' },
+          { default: () => `#${row.good?.id || '-'} ${row.good?.name || '-'}` }
+        )
       ]);
     }
   },
@@ -137,7 +168,7 @@ const columns: DataTableColumns<ExchangeItem> = [
   {
     title: '操作',
     key: 'actions',
-    width: 130,
+    width: 70,
     fixed: 'right',
     render(row) {
       if (row.status !== 'pending') {
@@ -146,7 +177,7 @@ const columns: DataTableColumns<ExchangeItem> = [
       const operating = isOperating(row.id);
       return h(
         NSpace,
-        { size: 'small' },
+        { vertical: true, size: 6, align: 'center' },
         {
           default: () => [
             h(
@@ -215,6 +246,14 @@ const columns: DataTableColumns<ExchangeItem> = [
           class="w-200px"
           @keyup.enter="handleSearch"
         />
+        <NInput
+          v-model:value="searchParams.verify_code"
+          maxlength="16"
+          placeholder="核销码 (8-16位)"
+          clearable
+          class="w-160px"
+          @keyup.enter="handleSearch"
+        />
       </template>
       <NInput
         v-model:value="searchParams.exchange_id_str"
@@ -224,6 +263,15 @@ const columns: DataTableColumns<ExchangeItem> = [
         class="flex-1 w-full"
         @keyup.enter="handleSearch"
       />
+
+      <template #extra>
+        <NButton type="primary" icon-placement="right" @click="verifyModalShow = true">
+          扫码核销
+          <template #icon>
+            <SvgIcon icon="ri:qr-scan-2-line" class="text-18px" />
+          </template>
+        </NButton>
+      </template>
     </TableSearchBar>
 
     <DataTableContainer
@@ -236,5 +284,7 @@ const columns: DataTableColumns<ExchangeItem> = [
       :pagination="pagination"
       @retry="loadData"
     />
+
+    <VerifyCodeModal v-model:show="verifyModalShow" @success="loadData" />
   </NSpace>
 </template>
