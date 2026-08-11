@@ -24,26 +24,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/user/login': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * 登录（重定向）
-     * @description 重定向至学校统一身份认证登录页面。若当前 Cookie 已有有效登录态，直接重定向回应用首页。
-     */
-    get: operations['userLogin'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   '/user/logincallback': {
     parameters: {
       query?: never;
@@ -53,7 +33,7 @@ export interface paths {
     };
     /**
      * 登录回调
-     * @description 统一身份认证回调接口，用 Query 参数 guid 换取用户身份，创建或更新本地用户记录并写入登录态（tz-sessions Cookie），返回 LoginResult（UserSummary 加上用于跨端鉴权的 session_id；UserSummary 本身不含该字段）。guid 为一次性凭据，换取成功后必须立即作废，并设置不超过 5 分钟的有效期（guid 会出现在 URL 与网关访问日志中，避免被重放换取会话）。guid 无效、过期或换取失败返回 400；账号已被封禁返回 403（code=7）。
+     * @description 登录跳转由前端发起：前端重定向到学校统一身份认证页面，redirect_uri 指向自己的登录回调页；认证完成后认证服务携带一次性凭据 code 重定向回该页面，回调页再以 AJAX 调用本接口换取会话。后端不提供登录重定向接口。后端用 code 与 redirect_uri 向学校认证服务换取用户身份，创建或更新本地用户记录并写入登录态（tz-sessions Cookie），返回 LoginResult（UserSummary 加上用于跨端鉴权的 session_id；UserSummary 本身不含该字段）。redirect_uri 须与前端授权阶段传给认证服务的值完全一致，并命中后端环境变量配置的回调页白名单（C 端、B 端各一项），不一致或不在白名单内返回 400 且不执行换取；因两端回调页地址不同，该值由前端传入而非后端写死单一值，但可取范围仍受白名单约束。code 为一次性凭据，换取成功后立即作废，有效期不超过 5 分钟（code 会出现在 URL 与网关访问日志中，避免被重放换取会话）。小程序可通过 web-view 登录获取该 session_id 并存入本地，后续请求通过 X-Session-Id Header 传递凭据。两端回调页地址需同时登记在学校统一认证侧的合法 redirect_uri 与后端环境变量白名单中；两端均为 history 路由，认证服务回跳是对回调页地址的整页加载，静态服务须把未知路径回退到 index.html。前端与 API 非同源时，调用本接口需携带凭据且服务端 CORS 精确回显 Origin 并允许凭据，或改用响应中的 session_id 走 X-Session-Id 请求头。
      */
     get: operations['loginCallback'];
     put?: never;
@@ -2075,29 +2055,13 @@ export interface operations {
       };
     };
   };
-  userLogin: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description 重定向到学校统一认证 */
-      302: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-    };
-  };
   loginCallback: {
     parameters: {
       query: {
-        /** @description 学校统一认证回调凭证 */
-        guid: string;
+        /** @description 学校统一认证回调返回的一次性凭据 */
+        code: string;
+        /** @description 前端授权阶段传给认证服务的登录回调页地址，须与该值完全一致；后端按环境变量配置的白名单（C 端、B 端各一项）校验，不一致或不在白名单内返回 400 且不执行换取。因两端回调页地址不同，该值由前端传入，可取范围受后端白名单约束。 */
+        redirect_uri: string;
       };
       header?: never;
       path?: never;
@@ -2114,6 +2078,15 @@ export interface operations {
           'application/json': components['schemas']['SuccessResponseBase'] & {
             resp: components['schemas']['LoginResult'];
           };
+        };
+      };
+      /** @description code 缺失、无效、已使用或已过期，或 redirect_uri 与授权阶段不一致、不在后端白名单内 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StandardErrorResponse'];
         };
       };
       /** @description 账号已被封禁，拒绝建立会话 */
@@ -2435,8 +2408,8 @@ export interface operations {
         page?: number;
         /** @description 每页数量，最大 20 */
         page_size?: number;
-        /** @description 排序字段，可选值：created_at / likes_count / attempts_count */
-        sort_by?: 'created_at' | 'likes_count' | 'attempts_count';
+        /** @description 排序方式，可选值：created_at（创建时间）/ hot（热度）。两者均按降序排列，值相同时按 id 倒序保证稳定分页。hot 为复合加权热度分 = likes_count × 2 + attempts_count × 1，两项权重由后端配置，客户端不感知具体权重，响应也不下发热度分字段。传入枚举外的值返回 400、code=3。 */
+        sort_by?: 'created_at' | 'hot';
         /** @description 按题目标题、描述或作者昵称文字模糊搜索，最长 50 个字符；不支持按 ID 搜索 */
         keyword?: string;
       };
@@ -3467,6 +3440,16 @@ export interface operations {
         content: {
           'application/json': components['schemas']['SuccessResponseBase'] & {
             resp: components['schemas']['PageBase'] & {
+              /**
+               * @description 累计总收入：当前用户全部积分流水中所有 delta > 0 的变动之和。全量口径，不受分页影响，每页均返回相同值
+               * @example 1500
+               */
+              total_income: number;
+              /**
+               * @description 累计总支出：当前用户全部积分流水中所有 delta < 0 的变动取绝对值之和，恒为非负数（前端自行加负号展示）。全量口径，不受分页影响，每页均返回相同值。满足 total_income - total_expense = GET /user/info 的 score_count
+               * @example 500
+               */
+              total_expense: number;
               list: components['schemas']['ScoreLog'][];
             };
           };

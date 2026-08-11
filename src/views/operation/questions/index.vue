@@ -76,7 +76,13 @@ const {
   pagination
 } = useTableSearch<
   PhotoReviewItem,
-  { activity_ids: number[]; solved: string | null; keyword: string; user_keyword: string }
+  {
+    activity_ids: number[];
+    solved: string | null;
+    sort_by: 'created_at' | 'likes_count';
+    keyword: string;
+    user_keyword: string;
+  }
 >({
   fetchApi: params =>
     fetchPhotoReviews({
@@ -85,10 +91,11 @@ const {
       status: 'approved',
       activity_ids: params.activity_ids.length > 0 ? params.activity_ids : undefined,
       solved: params.solved === 'true' ? true : params.solved === 'false' ? false : undefined,
+      sort_by: params.sort_by,
       keyword: params.keyword?.trim() || undefined,
       user_keyword: params.user_keyword?.trim() || undefined
     }),
-  initialParams: { activity_ids: [], solved: null, keyword: '', user_keyword: '' },
+  initialParams: { activity_ids: [], solved: null, sort_by: 'created_at', keyword: '', user_keyword: '' },
   // 首次查询要等活动列表和路由带来的 activity_ids 就位，统一由本页 onMounted 触发
   autoFetch: false
 });
@@ -363,6 +370,16 @@ onMounted(async () => {
             :options="[
               { label: '已破解', value: 'true' },
               { label: '未破解', value: 'false' }
+            ]"
+            @update:value="handleSearch"
+          />
+        </div>
+        <div class="w-150px">
+          <NSelect
+            v-model:value="searchParams.sort_by"
+            :options="[
+              { label: '按创建时间排序', value: 'created_at' },
+              { label: '按点赞排序', value: 'likes_count' }
             ]"
             @update:value="handleSearch"
           />

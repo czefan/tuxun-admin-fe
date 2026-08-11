@@ -1,7 +1,9 @@
 import { computed, reactive, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useLoading } from '@sa/hooks';
-import { fetchGetUserInfo, fetchLoginCallback, fetchLogout, fetchTestLogin, getLoginEntryUrl } from '@/service/api';
+import { fetchGetUserInfo, fetchLoginCallback, fetchLogout, fetchTestLogin } from '@/service/api';
+import { getErrorMessage } from '@/service/request/shared';
+import { getAuthorizeUrl, isOAuthConfigured, mockAuthorizeQuery } from '@/service/auth/oauth';
 import { useRouterPush } from '@/hooks/common/router';
 import { localStg, sessionStg } from '@/utils/storage';
 import { SetupStoreId } from '@/enum';
@@ -13,7 +15,7 @@ import { createEmptyUserInfo, sanitizeLoginRedirect } from './shared';
 export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
   const routeStore = useRouteStore();
   const tabStore = useTabStore();
-  const { toLogin } = useRouterPush(false);
+  const { toLogin, routerPush } = useRouterPush(false);
   const { loading: loginLoading, startLoading, endLoading } = useLoading();
 
   const authEpoch = ref(0);
@@ -21,6 +23,8 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
   const sessionInitialized = ref(false);
   const hasSession = ref(false);
   const userInfo = reactive<Api.Auth.UserInfo>(createEmptyUserInfo());
+  /** 最近一次登录回调失败的原因：后端 message（getErrorMessage 优先取它），或超时 / 断网的兜底文案；留给回调页展示 */
+  const loginError = ref('');
 
   const isAdmin = computed(() => hasSession.value && userInfo.level >= 2);
   const isLogin = computed(() => isAdmin.value);
@@ -96,11 +100,20 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
         }
 
         const data = response.data;
-        if (!data || typeof data.level !== 'number' || data.level < 2 || !data.id || !data.netid) {
-          await fetchLogout();
+        // 数据异常（无 id/netid 或 level 非数字）时无法确认身份：仅本地清空后台登录态。
+        // 不调用 fetchLogout —— 共享 cookie 域下那会连 C 端用户的图寻全局会话一起销毁
+        if (!data || typeof data.level !== 'number' || !data.id || !data.netid) {
           clearSession();
           sessionStatus.value = 'forbidden';
-          window.$message?.error('当前账号无后台管理权限');
+          return false;
+        }
+        // 共享 cookie 域：Level 1 用户（C 端用户误入后台）不再静默登出图寻全局会话，
+        // 保留会话与用户信息，只标记无后台权限；是否退出由图寻用户自己决定（登录页会提示）
+        if (data.level < 2) {
+          Object.assign(userInfo, createEmptyUserInfo(), data);
+          hasSession.value = true;
+          sessionInitialized.value = true;
+          sessionStatus.value = 'forbidden';
           return false;
         }
 
@@ -135,7 +148,8 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     return initSessionPromise;
   }
 
-  function beginLogin(redirect?: string) {
+  /** @param mockLevel 仅 mock 模式生效：指定模拟回调的登录等级（默认 Level 3），用于验证等级权限分支 */
+  function beginLogin(redirect?: string, mockLevel?: 1 | 2 | 3) {
     if (redirect) {
       const sanitized = sanitizeLoginRedirect(redirect);
       sessionStg.set('loginRedirect', sanitized);
@@ -143,7 +157,18 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
       sessionStg.remove('loginRedirect');
     }
 
-    window.location.assign(getLoginEntryUrl());
+    // mock 模式：不真跳外部授权页，直接带一次性 code 走回调页，让 state 校验 → 换会话 → 等级校验 → 回跳全流程被真实执行
+    if (import.meta.env.VITE_ENABLE_MOCK === 'Y') {
+      routerPush(`/login/callback?${mockAuthorizeQuery(mockLevel)}`);
+      return;
+    }
+
+    if (!isOAuthConfigured()) {
+      window.$message?.error('登录服务未配置，请联系管理员配置 VITE_OAUTH_BASE_URL / VITE_OAUTH_CLIENT_ID');
+      return;
+    }
+
+    window.location.assign(getAuthorizeUrl());
   }
 
   function consumeLoginRedirect() {
@@ -152,16 +177,23 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     return sanitizeLoginRedirect(redirect);
   }
 
-  async function completeLogin(guid: string) {
+  /** code 为空表示会话已由别的途径建立（测试登录），只跑「拉资料 + 校验等级」的收尾 */
+  async function completeLogin(code: string, redirectUri = '') {
     startLoading();
+    loginError.value = '';
 
     try {
-      if (guid) {
-        const callbackResult = await fetchLoginCallback(guid);
-        if (callbackResult.error) return false;
+      if (code) {
+        const callbackResult = await fetchLoginCallback(code, redirectUri);
+        if (callbackResult.error) {
+          // 必须走 getErrorMessage：error.message 是 axios 内部串（Request failed with status code 400），
+          // 后端原文在 error.response.data.message；顺带区分超时 / 断网
+          loginError.value = getErrorMessage(callbackResult.error);
+          return false;
+        }
       }
 
-      // getUserInfo 内部已校验 level >= 2，不合格的账号在那里就被登出了
+      // getUserInfo 内部已校验 level >= 2：不合格的账号保持图寻会话、只标记无后台权限（共享 cookie 域不再登出）
       const loaded = await getUserInfo();
       if (!loaded) return false;
 
@@ -250,6 +282,7 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     sessionInitialized,
     hasSession,
     userInfo,
+    loginError,
     isAdmin,
     isLogin,
     isSuperAdmin,

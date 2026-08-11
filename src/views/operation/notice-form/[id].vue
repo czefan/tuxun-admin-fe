@@ -75,6 +75,8 @@ const previewContentHtml = computed(() =>
 );
 
 const activityOptions = ref<{ label: string; value: number }[]>([]);
+/** 活动原始数据（id + 标题），用于预览里把 related_id 显示成 #活动名 */
+const rawActivities = ref<{ id: number; title: string }[]>([]);
 const imageFiles = ref<UploadFileInfo[]>([]);
 const localImageBlobUrl = ref('');
 
@@ -111,10 +113,19 @@ const previewImageSrc = computed(() => {
   return '';
 });
 
+/** 预览里关联活动的展示文本：#活动名；未关联时为空（隐藏该行） */
+const relatedActivityText = computed(() => {
+  const id = model.value.related_id;
+  if (!id) return '';
+  const activity = rawActivities.value.find(item => item.id === id);
+  return activity ? `#${activity.title}` : `#${id}`;
+});
+
 async function loadActivities() {
   try {
     // 通知可关联任意活动（含未开始），用管理端接口
     const { list } = await fetchAllPages(params => fetchAdminActivityList(params));
+    rawActivities.value = list.map(item => ({ id: item.id, title: item.title }));
     activityOptions.value = list.map(item => ({
       label: `[#${item.id}] ${item.title}`,
       value: item.id
@@ -283,12 +294,7 @@ onMounted(() => {
 
             <!-- 内容发布区：标题与内容紧密归类在一起 -->
             <NFormItem label="通知标题" required>
-              <NInput
-                v-model:value="model.title"
-                maxlength="20"
-                show-count
-                placeholder="请输入通知标题 (最多 20 字)，将显示在客户端消息列表和弹窗顶部"
-              />
+              <NInput v-model:value="model.title" maxlength="20" show-count placeholder="请输入通知标题 (最多 20 字)" />
             </NFormItem>
 
             <NFormItem required>
@@ -339,13 +345,14 @@ onMounted(() => {
           </template>
 
           <div class="rounded-8px border border-#e5e7eb border-solid p-16px bg-white dark:bg-#1e1e22 shadow-sm">
-            <div v-if="model.related_id" class="flex items-center justify-end mb-2">
-              <span class="text-12px text-#666">关联活动 #{{ model.related_id }}</span>
-            </div>
-
             <p class="m-0 text-17px font-semibold text-#111 dark:text-#eee">
               {{ model.title || '通知标题预览' }}
             </p>
+
+            <!-- 关联活动：标题下方、靠左、展示 #活动名 -->
+            <div v-if="relatedActivityText" class="mt-8px text-12px text-#666">
+              <span>{{ relatedActivityText }}</span>
+            </div>
 
             <!-- 配图在文字上方 -->
             <div v-if="imagePosition === 'top' && previewImageSrc" class="mt-12px">

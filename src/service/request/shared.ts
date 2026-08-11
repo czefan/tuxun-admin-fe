@@ -26,6 +26,10 @@ export async function handleRequestError(error: AxiosError<App.Service.Response<
   const requestUrl = error.config?.url || '';
   const authStore = useAuthStore();
 
+  // 登录回调是全屏专用页面，code 失效 / redirect_uri 不匹配等失败一律由页面自行展示，
+  // 不要让全局 toast 和页面错误卡片重复弹同一件事（400 / 403 都归它处理）
+  if (requestUrl.includes('/user/logincallback')) return true;
+
   if (status === 401) {
     lockOriginalRedirect();
     if (requestUrl.includes('/user/info') && !authStore.sessionInitialized) {
@@ -40,10 +44,6 @@ export async function handleRequestError(error: AxiosError<App.Service.Response<
   if (status === 403) {
     if (requestUrl.includes('/user/info') && !authStore.sessionInitialized) {
       authStore.clearSession();
-      return true;
-    }
-
-    if (requestUrl.includes('/user/logincallback')) {
       return true;
     }
 

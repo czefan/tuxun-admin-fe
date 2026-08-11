@@ -16,6 +16,7 @@ export const reviewHandlers = [
     const keyword = (url.searchParams.get('keyword') || '').toLowerCase().trim();
     const activityIds = url.searchParams.getAll('activity_ids').map(Number).filter(Boolean);
     const solvedStr = url.searchParams.get('solved');
+    const sortBy = url.searchParams.get('sort_by') || 'created_at';
 
     let filtered = mockDb.photos;
     if (status && status !== 'all') {
@@ -39,9 +40,13 @@ export const reviewHandlers = [
           (item.author.nickname || '').toLowerCase().includes(keyword)
       );
     }
-    filtered = [...filtered].sort(
-      (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime() || b.id - a.id
-    );
+    // 契约：sort_by 支持 created_at（默认）/ likes_count，均按降序，值相同按 id 倒序保证稳定分页
+    filtered = [...filtered].sort((a, b) => {
+      if (sortBy === 'likes_count') {
+        return (b.likes_count ?? 0) - (a.likes_count ?? 0) || b.id - a.id;
+      }
+      return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime() || b.id - a.id;
+    });
 
     const start = (page - 1) * pageSize;
     const list: AdminPhotoListItem[] = filtered.slice(start, start + pageSize);

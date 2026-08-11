@@ -44,3 +44,9 @@ contract/
 
 5. **Mock 同步**：同步更新 `src/mocks/` 假数据。
 6. **提交**：将 `contract/` 与关联的 `src/` 改动合并在同一个 Commit 中提交。
+
+> **跨仓契约一致性**：`contract/` 与 `tuxun-fe/contract/` 应保持同版本（两端理解不可能不一致是排查联调问题的前提）。两仓 `api.md` 逐字节一致；`apifox-import.json` 可能有纯格式差异（数组换行风格），比对时用归一化哈希忽略格式：
+>
+> ```bash
+> uv run python -c "import json,sys;print(json.dumps(json.load(open(sys.argv[1])),sort_keys=True))" contract/apifox-import.json | md5sum
+> ```

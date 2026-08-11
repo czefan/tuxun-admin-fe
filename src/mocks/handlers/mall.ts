@@ -1,7 +1,7 @@
 import { http } from 'msw';
 import type { AdminExchangeRecord, GoodItem } from '@/service/contract/types';
 import { mockDb } from '../data/db';
-import { checkAdminAuth, mockConflict, mockNotFound, mockSuccess } from '../response';
+import { checkAdminAuth, mockBadRequest, mockConflict, mockNotFound, mockSuccess } from '../response';
 
 export const mallHandlers = [
   // Goods handlers
@@ -66,7 +66,10 @@ export const mallHandlers = [
     const name = String(formData.get('name') || '');
     const description = String(formData.get('description') || '');
     const needScore = Number(formData.get('score_price') || 0);
-    const stock = Number(formData.get('stock') || 0);
+    // 契约：POST /admin/goods 的 stock 必填，缺字段直接 400，与真实后端一致
+    const rawStock = formData.get('stock');
+    if (rawStock === null) return mockBadRequest('stock 为必填字段');
+    const stock = Number(rawStock);
     const status = (formData.get('status') as 'in_store' | 'out_store') || 'in_store';
 
     const newGood = {

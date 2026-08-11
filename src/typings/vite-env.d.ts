@@ -84,6 +84,10 @@ declare namespace Env {
     readonly VITE_AMAP_SECURITY_JSCODE?: string;
     /** 高德代理服务地址（后端转发 restapi.amap.com 并附加 jscode），生产环境用，优先级高于 jscode */
     readonly VITE_AMAP_SERVICE_HOST?: string;
+    /** tz-oauth 授权服务地址（生产 https://oauth.tiaozhan.com）；留空则登录按钮降级为可操作的错误提示 */
+    readonly VITE_OAUTH_BASE_URL?: string;
+    /** 本服务的 OAuth Client ID，与 tuxun-fe 共用（同一个后端 = 同一个 client_secret） */
+    readonly VITE_OAUTH_CLIENT_ID?: string;
   }
 }
 

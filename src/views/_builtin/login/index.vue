@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { getPaletteColorByNumber, mixColor } from '@sa/color';
 import { useAuthStore } from '@/store/modules/auth';
 import { useThemeStore } from '@/store/modules/theme';
+import { isOAuthConfigured } from '@/service/auth/oauth';
 
 const route = useRoute();
 const router = useRouter();
@@ -23,6 +24,12 @@ function login() {
   authStore.beginLogin(redirect);
 }
 
+/** mock 下走完整回调链路登录指定等级（L1 应被拒 / L2 进入 / L3 全权限），区别于上方免 SSO 直连 */
+function mockCallbackLogin(level: 1 | 2 | 3) {
+  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/';
+  authStore.beginLogin(redirect, level);
+}
+
 async function logoutAndRetry() {
   await authStore.logout();
 }
@@ -31,31 +38,15 @@ async function logoutAndRetry() {
 const showTestLogin = import.meta.env.MODE !== 'prod';
 
 const isMock = import.meta.env.VITE_ENABLE_MOCK === 'Y';
-/** mock 的 /api/test/login 只校验密码非空，填什么都行 */
-const MOCK_PASSWORD = '123456';
+/** 未配置授权服务时置灰登录按钮：mock 模式走短路不需要真实配置，故排除 */
+const oauthDisabled = computed(() => !isMock && !isOAuthConfigured());
 
-/** 等级语义是后端契约，与 mock 数据无关，写死在这里 */
-const LEVEL_META = [
-  { level: 3, label: '超级管理员', type: 'warning' as const },
-  { level: 2, label: '普通管理员', type: 'primary' as const },
-  { level: 1, label: '普通用户（应被拒绝）', type: 'default' as const }
+/** mock 登录页的三个等级按钮（L3 超管 / L2 普通管理员 / L1 普通用户），按等级驱动 mock 回调登录 */
+const LEVEL_META: { level: 1 | 2 | 3; label: string; type: 'warning' | 'primary' | 'default' }[] = [
+  { level: 3, label: '超级管理员', type: 'warning' },
+  { level: 2, label: '普通管理员', type: 'primary' },
+  { level: 1, label: '普通用户', type: 'default' }
 ];
-
-const mockAccounts = ref<{ id: number; label: string; type: 'warning' | 'primary' | 'default' }[]>([]);
-
-// 账号 ID 只在 mock 数据里定义一次，这里按等级现取，改了 mock 表不用回来同步
-if (isMock) {
-  // isMock 构建期折叠为字面量，生产产物里这段连同 mock 数据一起被摇掉
-  import('@/mocks/data/db').then(({ mockDb }) => {
-    mockAccounts.value = LEVEL_META.flatMap(meta => {
-      const user = mockDb.users.find(item => item.level === meta.level && item.status === 'active');
-      if (!user) return [];
-      return [
-        { id: user.id, label: `Level ${meta.level} ${meta.label} · ${user.nickname} #${user.id}`, type: meta.type }
-      ];
-    });
-  });
-}
 
 const testUserId = ref<number | null>(null);
 const testPassword = ref('');
@@ -98,13 +89,17 @@ function handleManualTestLogin() {
         <NAlert v-if="authStore.hasSession && !authStore.isAdmin" type="warning" title="当前账号无后台权限">
           已登录账号 {{ displayName }} 的等级为 Level {{ authStore.userInfo.level }}。请退出后使用管理员账号重新认证。
         </NAlert>
-        <NAlert v-else type="info" title="学校统一认证">
-          点击下方按钮后将跳转到学校认证页面，认证完成后会自动返回管理端。
+        <NAlert v-else type="info" :title="isMock ? 'Mock 模拟登录' : '学校统一认证'">
+          {{
+            isMock
+              ? '当前为 Mock 模式，选择等级走模拟统一认证回调链路（Level 1 会被拒）。'
+              : '点击下方按钮后将跳转到学校统一认证页面，认证完成后会自动返回管理端。'
+          }}
         </NAlert>
 
         <NButton
           v-if="authStore.hasSession && !authStore.isAdmin"
-          class="mt-24px"
+          class="mt-32px"
           type="warning"
           size="large"
           block
@@ -112,47 +107,49 @@ function handleManualTestLogin() {
         >
           退出当前账号
         </NButton>
-        <NButton v-else class="mt-24px" type="primary" size="large" block @click="login">使用学校统一认证登录</NButton>
 
-        <!-- 开发 / 测试环境专用：跳过学校认证，按用户 ID 直接建会话 -->
-        <NCollapse v-if="showTestLogin" class="mt-24px">
+        <!-- Mock：主登录就是 3 个等级的回调按钮（完整链路：state 校验 → 换会话 → 等级校验 → 回跳） -->
+        <div v-else-if="isMock" class="mt-32px grid grid-cols-3 gap-8px">
+          <NButton
+            v-for="meta in LEVEL_META"
+            :key="meta.level"
+            :type="meta.type"
+            secondary
+            block
+            :loading="authStore.loginLoading"
+            @click="mockCallbackLogin(meta.level)"
+          >
+            L{{ meta.level }} {{ meta.label }}
+          </NButton>
+        </div>
+
+        <NTooltip v-else :disabled="!oauthDisabled">
+          <template #trigger>
+            <div>
+              <!-- 注意：margin 必须写在按钮本体，写在外层 NTooltip 上不会生效（naive-ui 把 class 挂到浮层） -->
+              <NButton class="mt-32px" type="primary" size="large" block :disabled="oauthDisabled" @click="login">
+                去登录
+              </NButton>
+            </div>
+          </template>
+          尚未配置 OAuth 授权服务（VITE_OAUTH_BASE_URL / VITE_OAUTH_CLIENT_ID），请联系管理员配置后重试
+        </NTooltip>
+
+        <!-- 真实模式：跳过 OAuth，按用户 ID 手填测试登录 -->
+        <NCollapse v-if="showTestLogin && !isMock" class="mt-24px">
           <NCollapseItem title="开发测试登录" name="test-login">
             <NSpace vertical :size="12">
-              <!-- Mock：账号从 mock 数据现取，每个等级一个按钮，点一下直接登录 -->
-              <template v-if="isMock">
-                <NButton
-                  v-for="acc in mockAccounts"
-                  :key="acc.id"
-                  :type="acc.type"
-                  secondary
-                  block
-                  :loading="authStore.loginLoading"
-                  @click="testLogin(acc.id, MOCK_PASSWORD)"
-                >
-                  {{ acc.label }}
-                </NButton>
-              </template>
-
-              <!-- 真实测试后端：用户 ID 与密码都由后端决定，只能手填 -->
-              <template v-else>
-                <NInputNumber v-model:value="testUserId" placeholder="用户 ID" :show-button="false" class="w-full" />
-                <NInput
-                  v-model:value="testPassword"
-                  type="password"
-                  placeholder="测试登录密码"
-                  show-password-on="click"
-                  @keyup.enter="handleManualTestLogin"
-                />
-                <NButton
-                  type="warning"
-                  secondary
-                  block
-                  :loading="authStore.loginLoading"
-                  @click="handleManualTestLogin"
-                >
-                  以该账号登录
-                </NButton>
-              </template>
+              <NInputNumber v-model:value="testUserId" placeholder="用户 ID" :show-button="false" class="w-full" />
+              <NInput
+                v-model:value="testPassword"
+                type="password"
+                placeholder="测试登录密码"
+                show-password-on="click"
+                @keyup.enter="handleManualTestLogin"
+              />
+              <NButton type="warning" secondary block :loading="authStore.loginLoading" @click="handleManualTestLogin">
+                以该账号登录
+              </NButton>
 
               <p class="m-0 text-12px text-#999">仅开发 / 测试环境可用，生产构建不会包含此入口。</p>
             </NSpace>

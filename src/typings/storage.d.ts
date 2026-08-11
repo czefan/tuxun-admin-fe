@@ -5,6 +5,8 @@ declare namespace StorageType {
     themeColor: string;
     /** The protected route requested before school authentication */
     loginRedirect: string;
+    /** OAuth2 state，发起授权时写入、回调校验后立即清除 */
+    oauthState: string;
     // /**
     //  * the theme settings
     //  */

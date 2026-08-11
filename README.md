@@ -91,16 +91,31 @@ pnpm fmt            # 运行代码格式化
 - `.env.mock`：MSW 纯粹 Mock 独立开发环境（`pnpm dev:mock` 使用）
 - `.env.prod`：生产环境构建配置
 
-### 1. 认证与代理规范
+### 1. 认证与登录规范
 
-开发与生产统一使用同域 Cookie Session 认证，所有 API 统一通过 `/api` 基础路径发起代理或 Mock 拦截：
+前后端统一使用同域 Cookie Session 认证，所有 API 统一通过 `/api` 基础路径发起代理或 Mock 拦截：
 
 ```env
 VITE_SERVICE_BASE_URL=/api
 ```
 
+- **登录方式**：前端发起 OAuth2 授权码流程。跳转统一认证授权页，将回调带回的 `code` 与 `redirect_uri` 交给 `GET /api/user/logincallback` 换取会话；token 换取与会话建立均在后端，`client_secret` 不进入前端。
 - **认证方式**：同域 Session Cookie，前端不存储/手动发送 Token。
 - **权限与错误处理**：HTTP 401 自动重定向至登录页，HTTP 403 重定向至 403 页面（后台仅允许 Level 2 及以上权限使用）。
+
+登录环境变量：
+
+```env
+VITE_OAUTH_BASE_URL=https://oauth.tiaozhan.com   # 统一认证授权服务地址
+VITE_OAUTH_CLIENT_ID=tu_xun                      # OAuth Client ID（与 tuxun-fe 共用，非 secret）
+```
+
+本地联调时 `VITE_OAUTH_BASE_URL` 不要指向 `http://localhost:8088`（该端口被 Go 后端占用）。
+
+本地登录前置条件：
+
+- 回调页 `http://localhost:9527/login/callback` 需在 tz-oauth 与后端回调白名单登记（生产为对应域名）；未登记时可用 `pnpm dev:mock` 或登录页「开发测试登录」面板验证。
+- 生产为 history 路由 SPA，需配 `try_files ... /index.html` 回退，否则认证回跳 `/login/callback` 会 404。参考 [deploy/nginx.conf.example](deploy/nginx.conf.example)。
 
 ### 2. 接口契约规范
 

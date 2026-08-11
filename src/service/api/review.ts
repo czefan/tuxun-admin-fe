@@ -20,6 +20,8 @@ export function fetchPhotoReviews(
     solved?: boolean;
     keyword?: string;
     user_keyword?: string;
+    /** 排序：created_at（时间倒序，默认）/ likes_count（热度） */
+    sort_by?: 'created_at' | 'likes_count';
   }
 ) {
   return request<PageResult<PhotoReviewItem>>({ url: '/admin/photos', params });

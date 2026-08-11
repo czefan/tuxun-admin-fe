@@ -73,7 +73,6 @@ Level 3 可以有多个，但任何 Level 3 都不能治理自己或其他 Level
 | ------ | ------------------------------------------------------------------------ |
 | 200    | 查询、更新、删除等操作成功                                               |
 | 201    | 资源创建成功                                                             |
-| 302    | 登录流程重定向                                                           |
 | 400    | 请求参数无效或业务前置条件不满足（如库存、积分不足）                     |
 | 401    | 未登录或 Session 失效                                                    |
 | 403    | 权限不足                                                                 |
@@ -263,21 +262,7 @@ GET /api/test/login
 
 ---
 
-### 1. 登录
-
-```
-GET /api/user/login
-```
-
-**权限**：无
-
-**说明**：重定向至学校统一身份认证登录页面。若当前 Cookie 已有有效登录态，直接重定向回应用首页。
-
-**响应**：302 重定向
-
----
-
-### 2. 登录回调
+### 1. 登录回调
 
 ```
 GET /api/user/logincallback
@@ -285,13 +270,18 @@ GET /api/user/logincallback
 
 **权限**：无
 
-**说明**：统一身份认证登录成功后的回调入口。用 Query 参数 `guid` 向学校认证服务换取用户身份，创建或更新本地用户记录并写入登录态（`tz-sessions` Cookie），返回当前登录用户信息（`LoginResult`，即 `UserSummary` 加上用于跨端鉴权的 `session_id`；`UserSummary` 本身不含该字段）。小程序可通过 `<web-view>` 登录获取该 `session_id` 并存入本地，后续请求通过 `X-Session-Id` Header 传递凭据。`guid` 为一次性凭据，换取成功后必须立即作废，并设置不超过 5 分钟的有效期（`guid` 会出现在 URL 与网关访问日志中，避免被重放换取会话）。`guid` 无效、过期或换取失败返回 `400`；对应账号已被封禁返回 `403`（`code=7`）。
+**说明**：登录跳转由前端发起——前端重定向到学校统一身份认证页面，`redirect_uri` 指向自己的登录回调页；认证完成后认证服务携带一次性凭据 `code` 重定向回该页面，回调页再以 AJAX 调用本接口换取会话。后端不提供登录重定向接口。
+
+后端用 `code` 与 `redirect_uri` 向学校认证服务换取用户身份，创建或更新本地用户记录并写入登录态（`tz-sessions` Cookie），返回 `LoginResult`（即 `UserSummary` 加上用于跨端鉴权的 `session_id`；`UserSummary` 本身不含该字段）。小程序可通过 `<web-view>` 登录获取该 `session_id` 并存入本地，后续请求通过 `X-Session-Id` Header 传递凭据。
+
+`redirect_uri` 须与前端授权阶段传给认证服务的值完全一致，并命中后端环境变量配置的回调页白名单（C 端、B 端各一项）；不一致或不在白名单内返回 `400`，不执行换取。因两端回调页地址不同，该值由前端传入而非后端写死单一值，但可取范围仍受后端白名单约束，前端无法指定任意地址。`code` 为一次性凭据，换取成功后立即作废，有效期不超过 5 分钟（`code` 会出现在 URL 与网关访问日志中，避免被重放换取会话）。
 
 **请求参数（Query）**
 
-| 参数 | 类型   | 必填 | 说明                    |
-| ---- | ------ | ---- | ----------------------- |
-| guid | string | 是   | 学校统一认证返回的 GUID |
+| 参数         | 类型   | 必填 | 说明                                             |
+| ------------ | ------ | ---- | ------------------------------------------------ |
+| code         | string | 是   | 学校统一认证回调返回的一次性凭据                 |
+| redirect_uri | string | 是   | 授权阶段使用的回调页地址，须一致且在后端白名单内 |
 
 **返回** `200`
 
@@ -313,11 +303,17 @@ GET /api/user/logincallback
 }
 ```
 
+**失败** `400`：`code` 缺失、无效、已使用或已过期，或 `redirect_uri` 与授权阶段不一致、不在后端白名单内（`code=3`）。
+
 **失败** `403`：账号已被封禁，拒绝建立会话（`code=7`）。
+
+**跨域**：前端与 API 非同源时，调用本接口需携带凭据且服务端 CORS 须精确回显 `Origin` 并允许凭据；或改用响应中的 `session_id`，后续请求走 `X-Session-Id` 请求头（与小程序同一套机制）。
+
+**部署前提**：两端回调页地址需同时登记在学校统一认证侧的合法 `redirect_uri` 与后端环境变量白名单中。两端均为 history 路由，认证服务回跳是对回调页地址的整页加载，静态服务须把未知路径回退到 `index.html`，否则回调页直接 404、登录链路断在最后一步。
 
 ---
 
-### 3. 登出
+### 2. 登出
 
 ```
 DELETE /api/user/logout
@@ -338,7 +334,7 @@ DELETE /api/user/logout
 
 ---
 
-### 4. 获取个人信息
+### 3. 获取个人信息
 
 ```
 GET /api/user/info
@@ -371,7 +367,7 @@ GET /api/user/info
 
 ---
 
-### 5. 修改昵称
+### 4. 修改昵称
 
 ```
 PUT /api/user/nickname
@@ -414,7 +410,7 @@ PUT /api/user/nickname
 
 ---
 
-### 6. 修改头像
+### 5. 修改头像
 
 ```
 PUT /api/user/avatar
@@ -528,6 +524,8 @@ GET /api/photos
 
 **注意**：Query 参数 `solved` 与列表项字段 `solved` 语义一致，均指**当前登录用户本人是否已破解**该题，用于"只看我没做过的题"这类筛选。未登录时 `solved` 恒为 `false`，因此 `solved=true` 返回空列表、`solved=false` 等价于返回全部。管理端 `GET /admin/photos` 的同名参数是全站口径（`solved_count > 0`），两者不通用。
 
+**排序口径**：`hot` 为复合加权热度分，默认公式 `likes_count × 2 + attempts_count × 1`，两项权重由后端配置，调整权重不算契约变更；客户端不感知具体权重，响应也不下发热度分字段。传入枚举外的值返回 `400`、`code=3`。
+
 **请求参数（Query）**
 
 | 参数        | 类型   | 必填 | 默认值     | 说明                                                                                                             |
@@ -536,7 +534,7 @@ GET /api/photos
 | solved      | bool   | 否   | —          | 按**当前登录用户本人**是否已破解筛选：`true` 我已破解、`false` 我未破解；不传返回全部。未登录时恒按 `false` 处理 |
 | page        | int    | 否   | 1          | 页码（min=1）                                                                                                    |
 | page_size   | int    | 否   | 10         | 每页数量（min=1, max=20）                                                                                        |
-| sort_by     | string | 否   | created_at | `created_at` / `likes_count` / `attempts_count`；均按降序排列，值相同时按 `id` 倒序保证稳定分页                  |
+| sort_by     | string | 否   | created_at | `created_at`（创建时间）/ `hot`（热度）；均按降序排列，值相同时按 `id` 倒序保证稳定分页                          |
 | keyword     | string | 否   | —          | 按题目标题、描述或作者昵称文字模糊搜索（最长 50），不支持按 ID                                                   |
 
 **返回** `200`
@@ -1163,6 +1161,8 @@ GET /api/score/logs
   "success": true,
   "resp": {
     "total": 20,
+    "total_income": 1500,
+    "total_expense": 500,
     "list": [
       {
         "id": 1,
@@ -1180,6 +1180,8 @@ GET /api/score/logs
   "code": 0
 }
 ```
+
+**total_income / total_expense**：均为必返非负整数，与 `total` 同级（不在列表项内）。`total_income` 为所有 `delta > 0` 的变动之和，`total_expense` 为所有 `delta < 0` 的变动取绝对值之和、恒为非负数（前端展示时自行加负号）。两者均为**全量口径**——统计当前用户的全部历史流水，不受分页影响，每页返回相同值。`admin_adjust` 按其 `delta` 正负分别计入收入或支出。满足恒等式 `total_income - total_expense = GET /api/user/info` 的 `score_count`（当前积分余额）。
 
 **reason 类型**：`answer_correct`（答题正确得分）/ `review_pass`（投稿审核通过得分）/ `exchange`（兑换奖品扣分）/ `admin_adjust`（管理员人工调整）
 

@@ -3,11 +3,15 @@ import type { FeedbackMedia, GoodBrief, Media, UserSummary } from '@/service/con
 export interface MockUserSession {
   id: number;
   netid: string;
-  name: string;
+  username: string;
   nickname: string;
   avatar: string;
   score_count: number;
   level: number;
+  status: 'active' | 'banned';
+  session_id: string;
+  nickname_edits_remaining: number;
+  avatar_edits_remaining: number;
 }
 
 export interface MockPhoto {
@@ -138,11 +142,15 @@ export interface MockContentBlock {
 const defaultSession: MockUserSession = {
   id: 1,
   netid: '2026000001',
-  name: '超级管理员',
+  username: '张超级',
   nickname: '图寻大导师',
   avatar: 'https://picsum.photos/200?random=admin',
   score_count: 9999,
-  level: 3
+  level: 3,
+  status: 'active',
+  session_id: 'mock-session-1',
+  nickname_edits_remaining: 3,
+  avatar_edits_remaining: 1
 };
 
 function makeMedia(seed: string | number, w = 800, h = 600): Media {
@@ -637,17 +645,17 @@ class MockDatabase {
     this.session = {
       id: user.id,
       netid: user.netid,
-      name: user.name,
+      username: user.username,
       nickname: user.nickname,
       avatar: user.avatar,
       score_count: user.score_count,
-      level: user.level
+      level: user.level,
+      status: user.status,
+      session_id: `mock-session-${user.id}`,
+      nickname_edits_remaining: 3,
+      avatar_edits_remaining: 1
     };
     return this.session;
-  }
-
-  reset(level = 3) {
-    this.session = { ...defaultSession, level };
   }
 }
 

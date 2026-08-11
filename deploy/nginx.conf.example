@@ -1,0 +1,44 @@
+# 图寻后台管理端 (tuxun-admin-fe) Nginx 部署参考配置
+# SPA 模式 —— VITE_ROUTER_HISTORY_MODE=history，必须配置 try_files 回退 index.html，
+# 否则除首次加载外的任意路径（含 OAuth 认证服务回跳整页加载 /login/callback）都会 404，
+# 登录链路会断在最后一步。
+
+server {
+    listen 80;
+    server_name your-admin-domain.com;
+
+    # 指向 Vite 构建产物目录（非 dev 的 index.html 所在目录）
+    root /var/www/tuxun-admin-fe/dist;
+    index index.html;
+
+    gzip on;
+    gzip_types text/plain text/css application/javascript application/json image/svg+xml;
+
+    # History 路由 fallback 关键配置。
+    # 认证服务回跳是对 /login/callback 的整页加载，命中此 location 回退到 index.html；
+    # 若缺少 try_files，回调页整页刷新会 404，登录无法完成。
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # index.html 绝不能缓存：/assets/ 是内容 hash + 强缓存，
+    # 一旦 index.html 被缓存，用户会一直加载旧版本的 assets 引用
+    location = /index.html {
+        add_header Cache-Control "no-cache, must-revalidate";
+    }
+
+    # 静态资源强缓存
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # API 反向代理（同域部署 /api → 图寻 Go 后端；如需跨域，请后端配置 CORS + 凭据）
+    # location /api/ {
+    #     proxy_pass http://127.0.0.1:8088/api/;
+    #     proxy_set_header Host $host;
+    #     proxy_set_header X-Real-IP $remote_addr;
+    #     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    #     proxy_set_header X-Forwarded-Proto $scheme;
+    # }
+}

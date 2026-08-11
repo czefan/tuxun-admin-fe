@@ -1,19 +1,10 @@
 import { request } from '../request';
-import { getServiceBaseURL } from '@/utils/service';
-
-/** School unified-authentication entry. */
-export function getLoginEntryUrl() {
-  const isHttpProxy = import.meta.env.DEV && import.meta.env.VITE_HTTP_PROXY === 'Y';
-  const { baseURL } = getServiceBaseURL(import.meta.env, isHttpProxy);
-
-  return `${baseURL.replace(/\/$/, '')}/user/login`;
-}
 
 /** Complete school authentication and establish the backend session. */
-export function fetchLoginCallback(guid: string) {
+export function fetchLoginCallback(code: string, redirectUri: string) {
   return request<Api.Auth.LoginUserSummary>({
     url: '/user/logincallback',
-    params: { guid }
+    params: { code, redirect_uri: redirectUri }
   });
 }
 

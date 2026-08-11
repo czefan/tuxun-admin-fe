@@ -34,7 +34,7 @@
     "dev:prod": "vite --mode prod",
     "fmt": "oxfmt",
     "gen-route": "sa gen-route",
-    "gen:api-types": "openapi-typescript contract/apifox-import.json -o src/service/contract/schema.d.ts",
+    "gen:api-types": "openapi-typescript contract/apifox-import.json -o src/service/contract/schema.d.ts && oxfmt src/service/contract/schema.d.ts",
     "lint": "oxlint --fix && eslint --fix .",
     "prepare": "simple-git-hooks",
     "preview": "vite preview",

@@ -21,7 +21,6 @@ export function sanitizeLoginRedirect(redirect?: string | null): string {
     !trimmed.startsWith('/') ||
     trimmed.startsWith('//') ||
     trimmed.startsWith('/login') ||
-    trimmed.startsWith('/login-callback') ||
     trimmed.startsWith('/403')
   ) {
     return '/home';
