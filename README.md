@@ -101,6 +101,7 @@ VITE_SERVICE_BASE_URL=/api
 
 - **登录方式**：前端发起 OAuth2 授权码流程。跳转统一认证授权页，将回调带回的 `code` 与 `redirect_uri` 交给 `GET /api/user/logincallback` 换取会话；token 换取与会话建立均在后端，`client_secret` 不进入前端。
 - **认证方式**：同域 Session Cookie，前端不存储/手动发送 Token。
+- **登出方式**：清除本地会话后整页跳转统一认证登出（`/oauth2/logout`），同步清除 IdP session，登出后回到登录页。
 - **权限与错误处理**：HTTP 401 自动重定向至登录页，HTTP 403 重定向至 403 页面（后台仅允许 Level 2 及以上权限使用）。
 
 登录环境变量：

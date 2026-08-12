@@ -3,7 +3,7 @@ import { defineStore } from 'pinia';
 import { useLoading } from '@sa/hooks';
 import { fetchGetUserInfo, fetchLoginCallback, fetchLogout, fetchTestLogin } from '@/service/api';
 import { getErrorMessage } from '@/service/request/shared';
-import { getAuthorizeUrl, isOAuthConfigured, mockAuthorizeQuery } from '@/service/auth/oauth';
+import { getAuthorizeUrl, getLogoutUrl, isOAuthConfigured, mockAuthorizeQuery } from '@/service/auth/oauth';
 import { useRouterPush } from '@/hooks/common/router';
 import { localStg, sessionStg } from '@/utils/storage';
 import { SetupStoreId } from '@/enum';
@@ -246,8 +246,16 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     if (!logoutPromise) {
       logoutPromise = (async () => {
         try {
+          // 顺序按 SERVICE_INTEGRATION §6.1：先清本站会话，再让浏览器去 IdP 清 session
           const result = await fetchLogout();
-          await resetStore();
+          const logoutUrl = getLogoutUrl();
+          // 要整页跳 IdP 时就不再走 router 跳登录页了 —— 那一跳紧接着就被整页导航冲掉，只会闪一下
+          await resetStore(!logoutUrl);
+          if (logoutUrl) {
+            // 必须整页跳转：AJAX 带不上 tz-oauth 的 cookie，清不掉 IdP session（§6「不要」第一条）
+            // 跳走后本页即将卸载，下面的 return 只对降级路径有意义
+            window.location.assign(logoutUrl);
+          }
           return !result.error;
         } finally {
           logoutPromise = null;
