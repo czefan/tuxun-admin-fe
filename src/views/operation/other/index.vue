@@ -38,7 +38,8 @@ const BLOCKS = [
     tagType: 'primary',
     fieldLabel: '弹窗富文本正文',
     placeholder: '请输入通知弹窗正文内容...',
-    minHeight: '240px'
+    minHeight: '240px',
+    maxText: 100
   },
   {
     key: 'score_rules',
@@ -48,7 +49,8 @@ const BLOCKS = [
     tagType: 'success',
     fieldLabel: '积分规则富文本正文',
     placeholder: '请输入积分规则详细内容...',
-    minHeight: '280px'
+    minHeight: '280px',
+    maxText: RICH_TEXT_MAX_TEXT
   },
   {
     key: 'help',
@@ -58,7 +60,8 @@ const BLOCKS = [
     tagType: 'warning',
     fieldLabel: '帮助中心富文本正文',
     placeholder: '请输入帮助中心详细内容...',
-    minHeight: '280px'
+    minHeight: '280px',
+    maxText: RICH_TEXT_MAX_TEXT
   }
 ] as const;
 
@@ -77,7 +80,7 @@ function contentLength(block: BlockConfig) {
 }
 
 function isOverLimit(block: BlockConfig) {
-  return Boolean(validateRichText(blocks.value[block.key].content));
+  return Boolean(validateRichText(blocks.value[block.key].content, block.maxText));
 }
 
 async function loadNoticeOptions() {
@@ -123,7 +126,7 @@ async function handleSave(block: BlockConfig) {
     message.warning('正文内容不能为空');
     return;
   }
-  const limitError = validateRichText(target.content);
+  const limitError = validateRichText(target.content, block.maxText);
   if (limitError) {
     message.error(limitError);
     return;
@@ -208,7 +211,7 @@ onMounted(() => {
                           class="text-12px"
                           :class="isOverLimit(block) ? 'text-red-500 font-semibold' : 'text-#888'"
                         >
-                          ({{ contentLength(block) }}/{{ RICH_TEXT_MAX_TEXT }} 字，按纯文本计)
+                          ({{ contentLength(block) }}/{{ block.maxText }} 字，按纯文本计)
                           <span v-if="isOverLimit(block)" class="ml-1 text-red-500">(字数超限，禁止发布)</span>
                         </span>
                       </div>

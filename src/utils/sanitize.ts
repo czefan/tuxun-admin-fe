@@ -105,12 +105,12 @@ export const RICH_TEXT_MAX_HTML = 10000;
  *
  * @returns 空串表示通过，否则为可直接展示的错误文案
  */
-export function validateRichText(html: string | null | undefined): string {
+export function validateRichText(html: string | null | undefined, maxText: number = RICH_TEXT_MAX_TEXT): string {
   const raw = html ?? '';
   const textLength = htmlTextLength(raw);
 
-  if (textLength > RICH_TEXT_MAX_TEXT) {
-    return `正文可见文字 ${textLength} 字，超出上限 ${RICH_TEXT_MAX_TEXT} 字，无法保存`;
+  if (textLength > maxText) {
+    return `正文可见文字 ${textLength} 字，超出上限 ${maxText} 字，无法保存`;
   }
   if (raw.length > RICH_TEXT_MAX_HTML) {
     return `正文格式过于复杂（HTML ${raw.length} 字符，上限 ${RICH_TEXT_MAX_HTML}），请精简排版后重试`;
