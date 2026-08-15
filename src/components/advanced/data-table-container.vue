@@ -7,7 +7,8 @@ const {
   errorMessage = '',
   size = 'medium',
   rowKey = undefined,
-  pagination = undefined
+  pagination = undefined,
+  remote = true
 } = defineProps<{
   columns: DataTableColumns<any>;
   data: any[];
@@ -18,6 +19,7 @@ const {
   errorTitle?: string;
   errorMessage?: string;
   size?: 'small' | 'medium' | 'large';
+  remote?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -47,6 +49,7 @@ const isPermissionDenied = computed(() => {
       :row-key="rowKey"
       :pagination="pagination"
       :size="size"
+      :remote="remote"
       class="text-14px"
     />
   </NCard>
