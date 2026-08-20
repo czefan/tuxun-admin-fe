@@ -37,30 +37,30 @@ const emit = defineEmits<{
 
     <!-- 条件控制区 -->
     <div class="flex flex-col gap-12px">
-      <!-- 1. 双行模式：上一行筛选条件，下一行搜索框 + 按钮（绝对不换行） -->
+      <!-- 1. 双行模式：上一行筛选条件，下一行搜索框 + 按钮 -->
       <template v-if="$slots.filters">
         <div class="flex flex-wrap items-center gap-12px">
           <slot name="filters"></slot>
         </div>
-        <div class="flex items-center gap-12px flex-nowrap w-full">
-          <div class="search-input-slot flex-1 min-w-0">
+        <div class="flex flex-wrap items-center justify-between gap-12px w-full">
+          <div class="search-input-slot flex-1 min-w-200px">
             <slot></slot>
           </div>
-          <div v-if="showActionButtons" class="flex items-center gap-12px flex-shrink-0">
-            <NButton type="primary" secondary :loading="loading" @click="emit('search')">查询</NButton>
+          <div v-if="showActionButtons" class="flex items-center gap-12px flex-shrink-0 ml-auto">
+            <NButton type="primary" secondary :disabled="loading" @click="emit('search')">查询</NButton>
             <NButton @click="emit('reset')">重置</NButton>
           </div>
         </div>
       </template>
 
-      <!-- 2. 单行模式：控件 + 查询重置按钮全同行展示（强制不换行） -->
+      <!-- 2. 单行模式：控件 + 查询重置按钮 -->
       <template v-else>
-        <div class="flex items-center gap-12px flex-nowrap w-full">
-          <div class="search-input-slot flex-1 min-w-0 flex items-center gap-12px">
+        <div class="flex flex-wrap items-center justify-between gap-12px w-full">
+          <div class="search-input-slot flex-1 min-w-200px flex flex-wrap items-center gap-12px">
             <slot></slot>
           </div>
-          <div v-if="showActionButtons" class="flex items-center gap-12px flex-shrink-0">
-            <NButton type="primary" secondary :loading="loading" @click="emit('search')">查询</NButton>
+          <div v-if="showActionButtons" class="flex items-center gap-12px flex-shrink-0 ml-auto">
+            <NButton type="primary" secondary :disabled="loading" @click="emit('search')">查询</NButton>
             <NButton @click="emit('reset')">重置</NButton>
           </div>
         </div>
