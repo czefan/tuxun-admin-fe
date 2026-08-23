@@ -59,8 +59,6 @@ const goodFormModel = ref({
   score_price: 100,
   stock: 0
 });
-/** 打开编辑弹窗时的库存快照，用于差量提交（改过才下发，避免覆盖别的入口的并发修改） */
-const originalStock = ref<number | null>(null);
 
 const { searchParams, rows, loading, loadError, errorMessage, loadData, handleSearch, handleReset, pagination } =
   useTableSearch<GoodListItem, { keyword: string; status: GoodStatus | null }>({
@@ -79,7 +77,6 @@ const { searchParams, rows, loading, loadError, errorMessage, loadData, handleSe
 function openCreateModal() {
   formModalType.value = 'create';
   currentGoodId.value = null;
-  originalStock.value = null;
   imageUrl.value = '';
   imageFiles.value = [];
   goodFormModel.value = {
@@ -95,15 +92,13 @@ function openCreateModal() {
 function openEditModal(row: GoodListItem) {
   formModalType.value = 'edit';
   currentGoodId.value = row.id;
-  // GoodItem.stock 在契约里是 required number，?? 只为防 mock 脏数据
-  originalStock.value = row.stock ?? 0;
   imageUrl.value = toImageVM(row.image, 'origin').url;
   imageFiles.value = [];
   goodFormModel.value = {
     name: row.name || '',
     description: row.description || '',
     score_price: row.score_price ?? 0,
-    stock: row.stock ?? 0
+    stock: 0
   };
   formModalVisible.value = true;
 }
@@ -114,9 +109,10 @@ function validateGoodForm() {
   if (goodFormModel.value.description.trim().length > 50) return '奖品描述不能超过 50 个字';
   if (goodFormModel.value.score_price === null || goodFormModel.value.score_price < 0) return '请输入有效的所需积分';
   if (goodFormModel.value.score_price > 999999) return '所需积分不能超过 999,999';
-  // 上下界与列表「调整库存」弹窗保持一致，两个入口同一套规则
-  if (goodFormModel.value.stock === null || goodFormModel.value.stock < 0) return '请输入有效的库存数量';
-  if (goodFormModel.value.stock > 99999) return '库存数量不能超过 99,999';
+  if (formModalType.value === 'create') {
+    if (goodFormModel.value.stock === null || goodFormModel.value.stock < 0) return '请输入有效的库存数量';
+    if (goodFormModel.value.stock > 99999) return '库存数量不能超过 99,999';
+  }
 
   const hasImage = imageFiles.value.length > 0 || Boolean(imageUrl.value);
   if (!hasImage) return '请上传奖品图片';
@@ -150,11 +146,8 @@ async function doFormSubmit() {
     description: goodFormModel.value.description.trim(),
     score_price: goodFormModel.value.score_price,
     image_file: imageFiles.value[0]?.file || undefined,
-    // 新建必填（契约）；编辑态未改动就不下发，避免把打开弹窗那一刻的旧值覆盖回并发修改的库存
-    stock:
-      formModalType.value === 'create' || goodFormModel.value.stock !== originalStock.value
-        ? goodFormModel.value.stock
-        : undefined
+    // 新建必填（契约）；编辑时不传库存（库存通过列表“库存”按钮单独修改）
+    stock: formModalType.value === 'create' ? goodFormModel.value.stock : undefined
   };
 
   formSubmitting.value = true;
@@ -415,7 +408,7 @@ const columns = computed<DataTableColumns<GoodListItem>>(() => [
             placeholder="请输入兑换所需的积分"
           />
         </NFormItem>
-        <NFormItem label="库存" required>
+        <NFormItem v-if="formModalType === 'create'" label="库存" required>
           <NInputNumber
             v-model:value="goodFormModel.stock"
             :min="0"
