@@ -211,16 +211,16 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
   }
 
   /**
-   * 开发 / 测试环境的免 SSO 登录：按用户 ID 直接建立会话。
+   * 开发 / 测试环境的免 SSO 登录：按 NetID 直接建立会话。
    * 生产构建下 MODE 常量折叠后整段会被摇掉，后端也不会开放该接口。
    */
-  async function testLogin(userId: number, password: string) {
+  async function testLogin(netid: string, password: string) {
     // 生产构建下 MODE 折叠为字面量，整个函数体成为死代码被摇掉
     if (import.meta.env.MODE === 'prod') return false;
 
     startLoading();
     try {
-      const result = await fetchTestLogin({ user_id: userId, password });
+      const result = await fetchTestLogin({ netid, password });
       if (result.error) return false;
     } finally {
       endLoading();

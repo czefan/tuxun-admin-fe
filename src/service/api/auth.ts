@@ -9,7 +9,7 @@ export function fetchLoginCallback(code: string, redirectUri: string) {
 }
 
 /** Dev / Test login entry. */
-export function fetchTestLogin(params: { user_id: number; password: string }) {
+export function fetchTestLogin(params: { netid: string; password: string }) {
   return request<Api.Auth.LoginUserSummary>({
     url: '/test/login',
     params

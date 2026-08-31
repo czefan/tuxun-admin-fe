@@ -13,7 +13,7 @@ export interface paths {
     };
     /**
      * 测试登录
-     * @description 仅在开发和测试环境开启，生产环境必须关闭。允许通过学号模拟测试账号一键登录。
+     * @description 仅在开发和测试环境开启，生产环境必须关闭。允许通过 NetID 模拟测试账号一键登录。
      */
     get: operations['testLogin'];
     put?: never;
@@ -133,7 +133,7 @@ export interface paths {
     };
     /**
      * 题目列表
-     * @description 全站题目列表与搜索接口。不传 activity_id 时，涵盖所有进行中与已结束活动的题目，支持全站题目检索；指定 activity_id 时按特定活动筛选；尚未开始的活动题目不对客户端暴露。Query 参数 solved 与列表项字段 solved 语义一致，均指当前登录用户本人是否已破解该题。
+     * @description 全站题目列表与搜索接口。不传 activity_id 时，涵盖所有进行中与已结束活动的题目，支持全站题目检索；指定 activity_id 时按特定活动筛选；尚未开始的活动题目不对客户端暴露。Query 参数 solved 与列表项字段 solved 语义一致，均指当前登录用户本人是否已破解该题。activity_status 按所属活动状态筛选（首页「进行中」传 active，往期传 ended），不传返回进行中与已结束的全部题目；与 activity_id 按 AND 组合。
      */
     get: operations['listPhotos'];
     put?: never;
@@ -693,7 +693,7 @@ export interface paths {
     };
     /**
      * 奖品列表
-     * @description 客户端奖品列表，仅返回上架（in_store）奖品，无任何管理员分支；下架奖品只在管理端列表可见。列表项已含全部奖品字段，不设奖品详情接口。
+     * @description 客户端奖品列表，仅返回上架（in_store）奖品，返回内容不因调用者身份变化；下架奖品只在管理端列表可见。多个筛选条件按 AND 组合。列表项已含全部奖品字段，不设奖品详情接口。兑换（POST /exchange）仍需登录。
      */
     get: operations['listGoods'];
     put?: never;
@@ -2019,8 +2019,8 @@ export interface operations {
   testLogin: {
     parameters: {
       query: {
-        /** @description 要登录的用户 ID */
-        user_id: number;
+        /** @description 要登录用户的 NetID */
+        netid: string;
         /** @description 测试登录密码 */
         password: string;
       };
@@ -2402,6 +2402,8 @@ export interface operations {
       query?: {
         /** @description 按单个活动筛选；不传时涵盖所有进行中与已结束活动的题目 */
         activity_id?: number;
+        /** @description 按所属活动状态筛选：active 进行中 / ended 已结束；不传返回两者全部。与 activity_id 按 AND 组合，若该活动不满足所选状态则返回空列表。活动状态由后端按服务器当前时间计算，口径与 GET /activity 一致。 */
+        activity_status?: 'active' | 'ended';
         /** @description 按当前登录用户本人是否已破解筛选：true=我已破解、false=我未破解；不传返回全部。与列表项字段 solved 语义一致。未登录时 solved 恒为 false，因此 solved=true 返回空列表、solved=false 等价于返回全部。 */
         solved?: boolean;
         /** @description 页码，从 1 开始 */
@@ -4764,18 +4766,6 @@ export interface operations {
       };
       /** @description 查询参数无效 */
       400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['ErrorResponseBase'] & {
-            /** @example null */
-            resp: Record<string, never> | null;
-          };
-        };
-      };
-      /** @description 未登录 */
-      401: {
         headers: {
           [name: string]: unknown;
         };

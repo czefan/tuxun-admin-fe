@@ -641,6 +641,15 @@ class MockDatabase {
 
   loginAs(userId: number) {
     const user = this.users.find(u => u.id === userId);
+    return this.establishSession(user);
+  }
+
+  loginByNetid(netid: string) {
+    const user = this.users.find(u => u.netid === netid);
+    return this.establishSession(user);
+  }
+
+  private establishSession(user: MockUserInfo | undefined) {
     if (!user) return null;
     this.session = {
       id: user.id,

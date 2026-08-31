@@ -33,11 +33,11 @@ export const authHandlers = [
       return mockForbidden('测试登录需提供密码');
     }
 
-    // 按 user_id 切换身份，方便验证不同等级下的权限分支
-    const userId = Number(url.searchParams.get('user_id'));
-    const session = mockDb.loginAs(userId);
+    // 按 netid 切换身份，方便验证不同等级下的权限分支
+    const netid = url.searchParams.get('netid');
+    const session = netid ? mockDb.loginByNetid(netid) : null;
     if (!session) {
-      return mockNotFound(`用户 ${userId} 不存在，可用测试账号见 mock users 表`);
+      return mockNotFound(`用户 ${netid} 不存在，可用测试账号见 mock users 表`);
     }
 
     return mockSuccess(toLoginResult(session), '测试登录成功');

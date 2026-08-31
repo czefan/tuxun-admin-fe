@@ -48,22 +48,22 @@ const LEVEL_META: { level: 1 | 2 | 3; label: string; type: 'warning' | 'primary'
   { level: 1, label: '普通用户', type: 'default' }
 ];
 
-const testUserId = ref<number | null>(null);
+const testNetid = ref('');
 const testPassword = ref('');
 
-async function testLogin(userId: number, password: string) {
-  const success = await authStore.testLogin(userId, password);
+async function testLogin(netid: string, password: string) {
+  const success = await authStore.testLogin(netid, password);
   if (success) {
     await router.replace(authStore.consumeLoginRedirect());
   }
 }
 
 function handleManualTestLogin() {
-  if (!testUserId.value) {
-    window.$message?.warning('请输入要登录的用户 ID');
+  if (!testNetid.value) {
+    window.$message?.warning('请输入要登录的 NetID');
     return;
   }
-  return testLogin(testUserId.value, testPassword.value);
+  return testLogin(testNetid.value, testPassword.value);
 }
 </script>
 
@@ -135,11 +135,11 @@ function handleManualTestLogin() {
           尚未配置 OAuth 授权服务（VITE_OAUTH_BASE_URL / VITE_OAUTH_CLIENT_ID），请联系管理员配置后重试
         </NTooltip>
 
-        <!-- 真实模式：跳过 OAuth，按用户 ID 手填测试登录 -->
+        <!-- 真实模式：跳过 OAuth，按 NetID 手填测试登录 -->
         <NCollapse v-if="showTestLogin && !isMock" class="mt-24px">
           <NCollapseItem title="开发测试登录" name="test-login">
             <NSpace vertical :size="12">
-              <NInputNumber v-model:value="testUserId" placeholder="用户 ID" :show-button="false" class="w-full" />
+              <NInput v-model:value="testNetid" placeholder="NetID" class="w-full" />
               <NInput
                 v-model:value="testPassword"
                 type="password"
