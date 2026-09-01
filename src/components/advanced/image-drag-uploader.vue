@@ -1,14 +1,22 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-import { NImage, NUpload, NUploadDragger, useMessage } from 'naive-ui';
+import { computed, onUnmounted, ref, watch } from 'vue';
+import { NImage, NSpin, NUpload, NUploadDragger, useMessage } from 'naive-ui';
 import type { UploadFileInfo } from 'naive-ui';
+import { compressImageToTarget, getImageDimensions } from '@/utils/image-compress';
 
 const props = withDefaults(
   defineProps<{
     imageUrl?: string | null;
     max?: number;
     accept?: string;
+    /** 拦截硬上限（MB），超过直接拒绝上传，默认 20MB */
     maxSizeMb?: number;
+    /** 触发智能压缩的目标大小（MB），默认 2MB */
+    targetSizeMb?: number;
+    /** 最小宽高比（宽/高），默认 0.33 (即 1:3)，低于此比例判定为过于修长 */
+    minAspectRatio?: number;
+    /** 最大宽高比（宽/高），默认 3.0 (即 3:1)，高于此比例判定为过于扁平 */
+    maxAspectRatio?: number;
     width?: number | string;
     height?: number | string;
     tip?: string;
@@ -18,9 +26,12 @@ const props = withDefaults(
     max: 1,
     accept: 'image/jpeg,image/png',
     maxSizeMb: 20,
+    targetSizeMb: 2,
+    minAspectRatio: 0.33,
+    maxAspectRatio: 3.0,
     width: 220,
     height: 140,
-    tip: '点击或拖拽上传 jpg/png，最大 20MB'
+    tip: '点击或拖拽上传 jpg/png，超过 2MB 自动压缩'
   }
 );
 
@@ -31,6 +42,7 @@ const emit = defineEmits<{
 const fileListModel = defineModel<UploadFileInfo[]>('fileList', { required: true });
 const message = useMessage();
 const isRemovedExistImage = ref(false);
+const isCompressing = ref(false);
 
 watch(
   () => props.imageUrl,
@@ -55,25 +67,64 @@ watch(
   { deep: true, immediate: true }
 );
 
+onUnmounted(() => {
+  if (objectUrl.value) {
+    URL.revokeObjectURL(objectUrl.value);
+    objectUrl.value = null;
+  }
+});
+
 const displayUrl = computed(() => {
   if (objectUrl.value) return objectUrl.value;
   if (!isRemovedExistImage.value && props.imageUrl) return props.imageUrl;
   return null;
 });
 
-function handleBeforeUpload(data: { file: UploadFileInfo }) {
-  const file = data.file.file;
-  if (!file) return true;
+async function handleBeforeUpload(data: { file: UploadFileInfo }) {
+  const rawFile = data.file.file;
+  if (!rawFile) return true;
 
-  // accept 只是文件选择器的过滤条件，拖拽进来的文件绕得过去，必须在这里兜住
+  // 1. 格式校验
   const allowedTypes = props.accept.split(',').map(item => item.trim());
-  if (allowedTypes.length > 0 && !allowedTypes.includes(file.type)) {
+  if (allowedTypes.length > 0 && !allowedTypes.includes(rawFile.type)) {
     message.error('图片仅支持 jpg/png 格式');
     return false;
   }
-  if (file.size > props.maxSizeMb * 1024 * 1024) {
-    message.error(`图片大小不能超过 ${props.maxSizeMb}MB`);
+
+  // 2. 超大文件硬上限拦截（避免前端大图解码造成 OOM 卡死）
+  if (rawFile.size > props.maxSizeMb * 1024 * 1024) {
+    message.error(`图片大小不能超过 ${props.maxSizeMb}MB，请手动压缩后上传`);
     return false;
+  }
+
+  // 3. 尺寸比例校验（过滤过于修长或过于扁平的畸形图片）
+  try {
+    const { width, height } = await getImageDimensions(rawFile);
+    if (width > 0 && height > 0) {
+      const ratio = width / height;
+      if (ratio < props.minAspectRatio) {
+        message.error('图片比例过于修长（宽高比不能低于 1:3），请调整后上传');
+        return false;
+      }
+      if (ratio > props.maxAspectRatio) {
+        message.error('图片比例过于扁平（宽高比不能高于 3:1），请调整后上传');
+        return false;
+      }
+    }
+  } catch (err) {
+    console.warn('获取图片尺寸失败，跳过比例校验:', err);
+  }
+
+  // 4. 智能逼近压缩（在不超过 targetSizeMb 限制下获得最高画质与分辨率）
+  const targetBytes = props.targetSizeMb * 1024 * 1024;
+  if (rawFile.size > targetBytes) {
+    isCompressing.value = true;
+    try {
+      const compressedFile = await compressImageToTarget(rawFile, targetBytes);
+      data.file.file = compressedFile;
+    } finally {
+      isCompressing.value = false;
+    }
   }
 
   isRemovedExistImage.value = false;
@@ -138,10 +189,15 @@ const numHeight = computed(() => (typeof props.height === 'number' ? `${props.he
       :max="max"
       :accept="accept"
       :show-file-list="false"
+      :disabled="isCompressing"
       @before-upload="handleBeforeUpload"
     >
-      <NUploadDragger :style="{ width: numWidth, height: numHeight }" class="flex items-center justify-center p-12px">
-        <div class="text-12px text-#666 text-center leading-relaxed">
+      <NUploadDragger
+        :style="{ width: numWidth, height: numHeight }"
+        class="relative flex items-center justify-center p-12px"
+      >
+        <NSpin v-if="isCompressing" size="medium" description="正在压缩图片..." />
+        <div v-else class="text-12px text-#666 text-center leading-relaxed">
           <div class="text-18px mb-4px text-gray-400">📷</div>
           {{ tip }}
         </div>
