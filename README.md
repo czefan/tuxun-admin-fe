@@ -140,7 +140,7 @@ interface ApiResponse<T> {
 
 ```text
 .
-├── contract/        # 后端 API 契约只读镜像与 check-contract.py 校验工具
+├── contract/        # 后端 API 契约只读镜像与 check-contract.js 校验工具
 ├── src/
 │   ├── assets/      # 静态资源
 │   ├── components/  # 通用业务组件 (高德地图拾取器、图片拖拽上传器、富文本编辑器等)

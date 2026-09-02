@@ -25,7 +25,7 @@
     "build": "vite build --mode prod",
     "build:test": "vite build --mode test",
     "check": "pnpm check:contract && pnpm lint && pnpm typecheck",
-    "check:contract": "uv run python ./contract/check-contract.py",
+    "check:contract": "node ./contract/check-contract.js",
     "cleanup": "sa cleanup",
     "commit": "sa git-commit",
     "commit:zh": "sa git-commit -l=zh-cn",

@@ -8,7 +8,7 @@
 contract/
 ├── apifox-import.json     # OpenAPI / Apifox 导出文件 (只读镜像，生成 schema.d.ts 的输入)
 ├── api.md                 # 接口可读文档镜像
-├── check-contract.py      # 契约结构与规范静态校验脚本
+├── check-contract.js      # 契约结构与规范静态校验脚本
 └── README.md              # 本说明文档
 ```
 
@@ -48,5 +48,5 @@ contract/
 > **跨仓契约一致性**：`contract/` 与 `tuxun-fe/contract/` 应保持同版本（两端理解不可能不一致是排查联调问题的前提）。两仓 `api.md` 逐字节一致；`apifox-import.json` 可能有纯格式差异（数组换行风格），比对时用归一化哈希忽略格式：
 >
 > ```bash
-> uv run python -c "import json,sys;print(json.dumps(json.load(open(sys.argv[1])),sort_keys=True))" contract/apifox-import.json | md5sum
+> node -e 'const fs=require("fs");const s=o=>o&&typeof o==="object"?(Array.isArray(o)?o.map(s):Object.keys(o).sort().reduce((a,k)=>{a[k]=s(o[k]);return a;},{})):o;process.stdout.write(JSON.stringify(s(JSON.parse(fs.readFileSync(process.argv[1])))));' contract/apifox-import.json | md5sum
 > ```
