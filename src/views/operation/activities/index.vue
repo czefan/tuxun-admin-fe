@@ -137,6 +137,8 @@ function handleSubmit() {
 }
 
 async function doSubmit() {
+  if (submitting.value) return false;
+
   const payload: ActivityFormPayload = {
     title: formModel.value.title.trim(),
     description: formModel.value.description.trim(),
@@ -156,9 +158,16 @@ async function doSubmit() {
       message.success(modalType.value === 'create' ? '活动新建成功' : '活动更新成功');
       modalVisible.value = false;
       loadData();
+      return true;
     }
+    if (res.error) {
+      message.error(res.error.message || '操作失败，请重试');
+      return false;
+    }
+    return false;
   } catch {
     message.error('操作失败，请重试');
+    return false;
   } finally {
     submitting.value = false;
   }

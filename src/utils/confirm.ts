@@ -1,3 +1,5 @@
+import type { DialogReactive } from 'naive-ui';
+
 /**
  * 全局统一的操作二次确认弹窗。
  *
@@ -31,12 +33,53 @@ export interface ConfirmOptions {
 export function confirmAction(options: ConfirmOptions) {
   const { title, content, tone = 'warning', positiveText = '确认', negativeText = '取消', onConfirm } = options;
 
-  window.$dialog?.[tone]({
+  let isSubmitting = false;
+  let dialogInstance: DialogReactive | undefined;
+
+  dialogInstance = window.$dialog?.[tone]({
     title,
     content,
     positiveText,
     negativeText,
-    onPositiveClick: onConfirm
+    maskClosable: false,
+    closeOnEsc: false,
+    onNegativeClick: () => {
+      if (isSubmitting) return false;
+      return true;
+    },
+    onClose: () => {
+      if (isSubmitting) return false;
+      return true;
+    },
+    onPositiveClick: async () => {
+      if (isSubmitting) return false;
+      isSubmitting = true;
+
+      if (dialogInstance) {
+        dialogInstance.loading = true;
+        dialogInstance.negativeButtonProps = { disabled: true };
+      }
+
+      try {
+        const result = await onConfirm();
+        if (result === false) {
+          isSubmitting = false;
+          if (dialogInstance) {
+            dialogInstance.loading = false;
+            dialogInstance.negativeButtonProps = { disabled: false };
+          }
+          return false;
+        }
+        return true;
+      } catch {
+        isSubmitting = false;
+        if (dialogInstance) {
+          dialogInstance.loading = false;
+          dialogInstance.negativeButtonProps = { disabled: false };
+        }
+        return false;
+      }
+    }
   });
 }
 

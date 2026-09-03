@@ -141,6 +141,8 @@ function handleFormSubmit() {
 }
 
 async function doFormSubmit() {
+  if (formSubmitting.value) return false;
+
   const payload: GoodFormPayload = {
     name: goodFormModel.value.name.trim(),
     description: goodFormModel.value.description.trim(),
@@ -159,9 +161,16 @@ async function doFormSubmit() {
       message.success(formModalType.value === 'create' ? '新建奖品成功' : '编辑奖品成功');
       formModalVisible.value = false;
       await loadData();
+      return true;
     }
+    if (res.error) {
+      message.error(res.error.message || '操作失败，请重试');
+      return false;
+    }
+    return false;
   } catch {
     message.error('操作失败，请重试');
+    return false;
   } finally {
     formSubmitting.value = false;
   }

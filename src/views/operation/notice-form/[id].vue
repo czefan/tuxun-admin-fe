@@ -191,6 +191,8 @@ function handleSave() {
 }
 
 async function doSave() {
+  if (submitting.value) return false;
+
   submitting.value = true;
   try {
     const payload = {
@@ -208,16 +210,29 @@ async function doSave() {
       if (res.data) {
         message.success('发布通知成功');
         backToList();
+        return true;
       }
-    } else {
-      const res = await updateAnnouncement(noticeId.value, payload);
-      if (res.data) {
-        message.success('更新通知成功');
-        backToList();
+      if (res.error) {
+        message.error(res.error.message || '发布通知失败');
+        return false;
       }
+      return false;
     }
+
+    const res = await updateAnnouncement(noticeId.value, payload);
+    if (res.data) {
+      message.success('更新通知成功');
+      backToList();
+      return true;
+    }
+    if (res.error) {
+      message.error(res.error.message || '更新通知失败');
+      return false;
+    }
+    return false;
   } catch {
     message.error('保存失败');
+    return false;
   } finally {
     submitting.value = false;
   }

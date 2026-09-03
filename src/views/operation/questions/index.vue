@@ -215,6 +215,8 @@ function handleSubmit() {
 }
 
 async function doSubmit() {
+  if (submitting.value) return false;
+
   submitting.value = true;
   try {
     if (modalType.value === 'create') {
@@ -231,7 +233,13 @@ async function doSubmit() {
         message.success('新增题目成功');
         modalVisible.value = false;
         loadData();
+        return true;
       }
+      if (res.error) {
+        message.error(res.error.message || '新增题目失败');
+        return false;
+      }
+      return false;
     } else if (modalType.value === 'edit' && currentPhotoId.value) {
       const res = await updateAdminPhoto(currentPhotoId.value, {
         title: formModel.value.title,
@@ -245,10 +253,18 @@ async function doSubmit() {
         message.success('修改题目成功');
         modalVisible.value = false;
         loadData();
+        return true;
       }
+      if (res.error) {
+        message.error(res.error.message || '修改题目失败');
+        return false;
+      }
+      return false;
     }
+    return false;
   } catch {
     message.error('操作失败');
+    return false;
   } finally {
     submitting.value = false;
   }
