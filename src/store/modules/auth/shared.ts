@@ -17,15 +17,19 @@ export function createEmptyUserInfo(): Api.Auth.UserInfo {
 export function sanitizeLoginRedirect(redirect?: string | null): string {
   if (!redirect) return '/home';
   const trimmed = redirect.trim();
-  if (
-    !trimmed.startsWith('/') ||
-    trimmed.startsWith('//') ||
-    trimmed.startsWith('/login') ||
-    trimmed.startsWith('/403')
-  ) {
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(trimmed);
+  } catch {
     return '/home';
   }
-  if (trimmed.includes(':') || trimmed.includes('javascript:')) {
+  if (
+    !trimmed.startsWith('/') ||
+    decoded.startsWith('//') ||
+    decoded.includes('\\') ||
+    [...decoded].some(char => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127) ||
+    /^\/(?:login|403)(?:[/?#]|$)/i.test(decoded)
+  ) {
     return '/home';
   }
   return trimmed;

@@ -50,7 +50,7 @@ export function setupElegantRouter() {
     mall_exchange: { icon: 'mdi:ticket-confirmation-outline', order: 2 },
 
     system: { icon: 'mdi:cog-outline', order: 5 },
-    system_users: { icon: 'mdi:account-group-outline', order: 1 },
+    system_users: { icon: 'mdi:account-group-outline', order: 1, requiredLevel: 3 },
 
     'login-callback': { hideInMenu: true }
   };

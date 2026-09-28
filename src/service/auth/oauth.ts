@@ -30,6 +30,7 @@ export function getCallbackUrl() {
  * 3. 只能整页跳转，不能用 axios/fetch 调 —— 跨站请求带不上 tz-oauth 的 session cookie，等于没登出。
  */
 export function getLogoutUrl() {
+  if (import.meta.env.VITE_ENABLE_MOCK === 'Y') return '';
   if (!isOAuthConfigured()) return '';
   const params = new URLSearchParams({
     client_id: import.meta.env.VITE_OAUTH_CLIENT_ID || '',

@@ -5,6 +5,8 @@ import { getPaletteColorByNumber, mixColor } from '@sa/color';
 import { useAuthStore } from '@/store/modules/auth';
 import { useThemeStore } from '@/store/modules/theme';
 import { isOAuthConfigured } from '@/service/auth/oauth';
+import { sanitizeLoginRedirect } from '@/store/modules/auth/shared';
+import { sessionStg } from '@/utils/storage';
 
 const route = useRoute();
 const router = useRouter();
@@ -35,7 +37,7 @@ async function logoutAndRetry() {
 }
 
 /** 开发 / 测试环境的免 SSO 登录入口；生产构建下该常量为 false，整段会被摇掉 */
-const showTestLogin = import.meta.env.MODE !== 'prod';
+const showTestLogin = import.meta.env.MODE === 'test' || import.meta.env.MODE === 'mock';
 
 const isMock = import.meta.env.VITE_ENABLE_MOCK === 'Y';
 /** 未配置授权服务时置灰登录按钮：mock 模式走短路不需要真实配置，故排除 */
@@ -52,6 +54,10 @@ const testNetid = ref('');
 const testPassword = ref('');
 
 async function testLogin(netid: string, password: string) {
+  sessionStg.set(
+    'loginRedirect',
+    sanitizeLoginRedirect(typeof route.query.redirect === 'string' ? route.query.redirect : null)
+  );
   const success = await authStore.testLogin(netid, password);
   if (success) {
     await router.replace(authStore.consumeLoginRedirect());

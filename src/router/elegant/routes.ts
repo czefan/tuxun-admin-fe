@@ -265,7 +265,8 @@ export const generatedRoutes: GeneratedRoute[] = [
           title: 'system_users',
           i18nKey: 'route.system_users',
           icon: 'mdi:account-group-outline',
-          order: 1
+          order: 1,
+          requiredLevel: 3
         }
       }
     ]

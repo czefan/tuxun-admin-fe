@@ -216,7 +216,7 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
    */
   async function testLogin(netid: string, password: string) {
     // 生产构建下 MODE 折叠为字面量，整个函数体成为死代码被摇掉
-    if (import.meta.env.MODE === 'prod') return false;
+    if (import.meta.env.MODE !== 'test' && import.meta.env.MODE !== 'mock') return false;
 
     startLoading();
     try {
