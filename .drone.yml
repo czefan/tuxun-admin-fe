@@ -4,13 +4,14 @@ name: build
 
 steps:
   - name: build
-    image: node:22-alpine
+    image: node:24-alpine
     commands:
       - corepack enable
-      - corepack prepare pnpm@10.5.0 --activate
-      - pnpm config set registry http://registry.npmmirror.com
+      - corepack prepare pnpm@12.6.0 --activate
+      - pnpm config set registry https://registry.npmmirror.com
       - pnpm config set store-dir /root/.pnpm-store
       - pnpm install --frozen-lockfile
+      - pnpm check
       - pnpm build
     volumes:
       - name: pnpm_store

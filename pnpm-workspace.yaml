@@ -9,3 +9,12 @@ allowBuilds:
 shamefullyHoist: true
 ignoreWorkspaceRootCheck: true
 linkWorkspacePackages: true
+
+# 安全补丁：限制在当前主版本，兼容上游的依赖范围。
+overrides:
+  'postcss@>=8 <8.5.23': 8.5.23
+  'nanoid@>=3 <4': 3.3.18
+  'form-data@>=4 <4.0.6': 4.0.6
+  'micromatch@>=4 <4.0.8': 4.0.8
+  'js-yaml@>=4 <4.3.2': 4.3.2
+  'esbuild@<0.28.1': 0.28.1
