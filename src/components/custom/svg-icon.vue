@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, useAttrs } from 'vue';
 import { Icon } from '@iconify/vue';
+import localIcons from 'virtual:local-icons';
 
 defineOptions({ name: 'SvgIcon', inheritAttrs: false });
 
@@ -26,15 +27,7 @@ const bindAttrs = computed<{ class: string; style: string }>(() => ({
   style: (attrs.style as string) || ''
 }));
 
-const symbolId = computed(() => {
-  const { VITE_ICON_LOCAL_PREFIX: prefix } = import.meta.env;
-
-  const defaultLocalIcon = 'no-icon';
-
-  const icon = props.localIcon || defaultLocalIcon;
-
-  return `#${prefix}-${icon}`;
-});
+const localComponent = computed(() => localIcons[props.localIcon || 'no-icon'] || localIcons['no-icon']);
 
 /** If localIcon is passed, render localIcon first */
 const renderLocalIcon = computed(() => props.localIcon || !props.icon);
@@ -42,9 +35,7 @@ const renderLocalIcon = computed(() => props.localIcon || !props.icon);
 
 <template>
   <template v-if="renderLocalIcon">
-    <svg aria-hidden="true" width="1em" height="1em" v-bind="bindAttrs">
-      <use :xlink:href="symbolId" fill="currentColor" />
-    </svg>
+    <component :is="localComponent" aria-hidden="true" width="1em" height="1em" v-bind="bindAttrs" />
   </template>
   <template v-else>
     <Icon v-if="icon" :icon="icon" v-bind="bindAttrs" />
