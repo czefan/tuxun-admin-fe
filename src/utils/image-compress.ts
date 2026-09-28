@@ -17,7 +17,7 @@ export async function getImageDimensions(file: File): Promise<{ width: number; h
     }
   }
 
-  return new Promise(resolve => {
+  return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.addEventListener('load', () => {
@@ -26,7 +26,7 @@ export async function getImageDimensions(file: File): Promise<{ width: number; h
     });
     img.addEventListener('error', () => {
       URL.revokeObjectURL(url);
-      resolve({ width: 0, height: 0 });
+      reject(new Error('无法读取图片，请选择有效的 JPG 或 PNG 文件'));
     });
     img.src = url;
   });
@@ -35,36 +35,35 @@ export async function getImageDimensions(file: File): Promise<{ width: number; h
 /**
  * 智能图片压缩：
  * 1. <= 2MB 原样直传（零损耗、零耗时）；
- * 2. > 2MB 自动校正 EXIF 角度，等比约束在 2.5K 分辨率（2560px）与 0.85 视觉无损画质，体积稳定收敛至 2MB 内；
+ * 2. 超限时限制分辨率，并根据实际输出大小逐步缩小，最多尝试 8 次；
  * 3. 严格原格式进出，不破坏 PNG 透明通道。
  */
-export function compressImageToTarget(file: File, targetBytes: number = DEFAULT_TARGET_BYTES): Promise<File> {
+export async function compressImageToTarget(file: File, targetBytes: number = DEFAULT_TARGET_BYTES): Promise<File> {
+  if (!Number.isFinite(targetBytes) || targetBytes <= 0) throw new Error('图片压缩目标大小无效');
   if (file.size <= targetBytes) {
-    return Promise.resolve(file);
+    return file;
   }
 
-  return new Promise(resolve => {
-    // eslint-disable-next-line no-new
-    new Compressor(file, {
-      maxWidth: 2560,
-      maxHeight: 2560,
-      quality: 0.85,
-      checkOrientation: true,
-      convertTypes: [], // 不转 JPEG，保留 PNG 格式与透明背景
-      success(result) {
-        resolve(
-          result instanceof File
-            ? result
-            : new File([result], file.name, {
-                type: result.type || file.type,
-                lastModified: Date.now()
-              })
-        );
-      },
-      error(err) {
-        console.warn('图片压缩失败，回退原图:', err);
-        resolve(file);
-      }
+  let maxDimension = 2560;
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    // 每轮依据上一轮的实际大小调整尺寸，从原图压缩避免重复有损编码。
+    // eslint-disable-next-line no-await-in-loop
+    const result = await new Promise<Blob>((resolve, reject) => {
+      // eslint-disable-next-line no-new
+      new Compressor(file, {
+        maxWidth: maxDimension,
+        maxHeight: maxDimension,
+        quality: Math.max(0.55, 0.85 - attempt * 0.05),
+        checkOrientation: true,
+        convertTypes: [],
+        success: resolve,
+        error: reject
+      });
     });
-  });
+    if (result.size <= targetBytes) {
+      return new File([result], file.name, { type: result.type || file.type, lastModified: file.lastModified });
+    }
+    maxDimension = Math.max(1, Math.floor(maxDimension * Math.min(0.8, Math.sqrt(targetBytes / result.size) * 0.9)));
+  }
+  throw new Error('图片压缩后仍超出目标大小，请缩小图片后重试');
 }

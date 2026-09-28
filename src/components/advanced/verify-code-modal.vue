@@ -7,6 +7,7 @@ import {
   NDescriptions,
   NDescriptionsItem,
   NImage,
+  NInput,
   NModal,
   NSpace,
   NTag,
@@ -25,8 +26,12 @@ defineOptions({ name: 'VerifyCodeModal' });
 const props = defineProps<{ show: boolean }>();
 const emit = defineEmits<{ (e: 'update:show', value: boolean): void; (e: 'success'): void }>();
 
-const isDev = import.meta.env.DEV;
+const isDev = import.meta.env.VITE_ENABLE_MOCK === 'Y';
+const manualCode = ref('');
+let session = 0;
+let alive = true;
 const message = useMessage();
+const baseUrl = import.meta.env.BASE_URL;
 const record = ref<ExchangeItem | null>(null);
 const videoRef = ref<HTMLVideoElement | null>(null);
 const submitting = ref(false);
@@ -44,15 +49,23 @@ const parseErr = (err: any) =>
 
 /** 开启扫码相机 */
 async function startScanner() {
+  if (!alive || !props.show || submitting.value) return;
+  const current = ++session;
   stopScanner();
   record.value = null;
   await nextTick();
-  if (videoRef.value) {
-    qrScanner = new QrScanner(videoRef.value, res => res?.data && onScanned(res.data), {
-      highlightScanRegion: true,
-      highlightCodeOutline: true
-    });
-    qrScanner.start().catch(err => message.warning(parseErr(err)));
+  if (!alive || !props.show || current !== session || !videoRef.value) return;
+  const scanner = new QrScanner(videoRef.value, res => res?.data && onScanned(res.data), {
+    highlightScanRegion: true,
+    highlightCodeOutline: true
+  });
+  qrScanner = scanner;
+  try {
+    await scanner.start();
+  } catch (err) {
+    if (alive && props.show && current === session) message.warning(parseErr(err));
+  } finally {
+    if (!alive || !props.show || current !== session) scanner.destroy();
   }
 }
 
@@ -65,31 +78,31 @@ function stopScanner() {
 
 /** 识别二维码查单 */
 async function onScanned(codeStr: string) {
+  if (!alive || !props.show || submitting.value) return;
   const code = codeStr.trim().toUpperCase();
-  if (!code || submitting.value) return;
-
   stopScanner();
-  submitting.value = true;
-  const res = await fetchExchanges({ page: 1, page_size: 1, verify_code: code });
-  submitting.value = false;
-
-  if (res.error) {
-    message.error(res.error.message || '查询订单失败');
-    startScanner();
+  if (!/^[A-Z0-9]{8,16}$/.test(code)) {
+    message.warning('核销码应为 8–16 位字母或数字，请重新扫码或手动输入');
     return;
   }
 
-  if (res.data?.list?.length) {
-    record.value = res.data.list[0];
-  } else {
-    message.error(`未查到核销码 [${code}] 对应的订单`);
-    startScanner();
+  const current = ++session;
+  submitting.value = true;
+  try {
+    const res = await fetchExchanges({ page: 1, page_size: 1, verify_code: code });
+    if (!alive || !props.show || current !== session) return;
+    if (res.error) return;
+    record.value = res.data?.list?.[0] ?? null;
+    if (!record.value) message.warning(`未查到核销码 [${code}] 对应的订单`);
+  } finally {
+    if (current === session) submitting.value = false;
   }
 }
 
 /** 核销或取消 (二次确认防误触) */
 function handleVerify(action: 'verify' | 'cancel') {
-  if (!record.value) return;
+  if (!record.value || submitting.value || record.value.status !== 'pending') return;
+  const current = session;
   const item = record.value;
   const isVerify = action === 'verify';
   const actionText = isVerify ? '核销' : '取消';
@@ -102,27 +115,39 @@ function handleVerify(action: 'verify' | 'cancel') {
     tone: isVerify ? 'warning' : 'error',
     positiveText: `确认${actionText}`,
     onConfirm: async () => {
+      if (!alive || !props.show || current !== session || submitting.value) return false;
       submitting.value = true;
-      const res = await verifyExchange(item.id, action);
-      submitting.value = false;
-
-      if (res.error) {
-        message.error(res.error.message || `${actionText}失败`);
-        return;
+      try {
+        const res = await verifyExchange(item.id, action);
+        if (res.error) return false;
+        if (alive) emit('success');
+        if (!alive || !props.show || current !== session) return true;
+        message.success(`订单 #${item.id} 已${actionText}`);
+        record.value = { ...item, status: isVerify ? 'verified' : 'cancelled' };
+        return true;
+      } finally {
+        if (current === session) submitting.value = false;
       }
-
-      message.success(`订单 #${item.id} 已${actionText}`);
-      emit('success');
-      startScanner();
     }
   });
 }
 
+function closeSession() {
+  session += 1;
+  stopScanner();
+  submitting.value = false;
+  record.value = null;
+}
+
 watch(
   () => props.show,
-  val => (val ? startScanner() : stopScanner())
+  val => (val ? startScanner() : closeSession()),
+  { immediate: true, flush: 'post' }
 );
-onBeforeUnmount(stopScanner);
+onBeforeUnmount(() => {
+  alive = false;
+  closeSession();
+});
 </script>
 
 <template>
@@ -140,9 +165,19 @@ onBeforeUnmount(stopScanner);
         <div
           class="relative w-full max-w-360px aspect-square rounded-12px bg-black overflow-hidden border border-gray-200"
         >
-          <video ref="videoRef" class="w-full h-full object-cover" />
+          <video ref="videoRef" playsinline muted class="w-full h-full object-cover" />
         </div>
         <p class="text-13px text-gray-500 my-12px">请将兑换二维码放置于对焦点内</p>
+        <div class="flex w-full gap-8px mb-12px">
+          <NInput
+            v-model:value="manualCode"
+            placeholder="手动输入核销码"
+            :disabled="submitting"
+            @keyup.enter="onScanned(manualCode)"
+          />
+          <NButton :loading="submitting" @click="onScanned(manualCode)">查询</NButton>
+          <NButton :disabled="submitting" @click="startScanner">重新扫码</NButton>
+        </div>
         <NButton
           v-if="isDev"
           type="primary"
@@ -165,7 +200,7 @@ onBeforeUnmount(stopScanner);
             </NDescriptionsItem>
             <NDescriptionsItem label="用户">
               <div class="flex items-center gap-6px">
-                <NAvatar round :size="20" :src="record.user?.avatar" fallback-src="/favicon.svg" />
+                <NAvatar round :size="20" :src="record.user?.avatar" :fallback-src="`${baseUrl}favicon.svg`" />
                 <span>{{ record.user?.nickname }} (ID: {{ record.user?.id }})</span>
               </div>
             </NDescriptionsItem>
@@ -202,7 +237,7 @@ onBeforeUnmount(stopScanner);
         </NCard>
 
         <div class="flex justify-between items-center pt-1">
-          <NButton secondary @click="startScanner">重新扫码</NButton>
+          <NButton secondary :disabled="submitting" @click="startScanner">重新扫码</NButton>
           <div class="flex gap-12px">
             <template v-if="record.status === 'pending'">
               <NButton type="error" ghost :loading="submitting" @click="handleVerify('cancel')">取消订单</NButton>

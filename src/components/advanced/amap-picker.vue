@@ -46,6 +46,10 @@ const markerRef = shallowRef<any>(null);
 const geocoderRef = shallowRef<any>(null);
 const autoCompleteRef = shallowRef<any>(null);
 
+let alive = true;
+let addressSequence = 0;
+let searchSequence = 0;
+
 let resizeObserver: ResizeObserver | null = null;
 
 /** 大学主校区中心点 GCJ-02 坐标 */
@@ -57,8 +61,11 @@ function currentCenter(): [number, number] {
 
 /** 逆地理编码：经纬度 → 结构化地址 */
 function reverseGeocode(lng: number, lat: number) {
+  const sequence = ++addressSequence;
+  address.value = '';
   if (!geocoderRef.value) return;
   geocoderRef.value.getAddress([lng, lat], (status: string, result: any) => {
+    if (!alive || sequence !== addressSequence) return;
     address.value = status === 'complete' && result.regeocode ? result.regeocode.formattedAddress : '';
   });
 }
@@ -87,7 +94,7 @@ async function createMap() {
     AMapRef.value = AMap;
 
     // await 期间组件可能已卸载
-    if (!mapContainer.value) return;
+    if (!alive || mapContainer.value !== container) return;
 
     const map = new AMap.Map(container, { zoom: 16, center: currentCenter() });
     mapRef.value = map;
@@ -149,6 +156,7 @@ function locateMe() {
 
   const geolocation = new AMapRef.value.Geolocation({ enableHighAccuracy: true, timeout: 10000 });
   geolocation.getCurrentPosition((status: string, result: any) => {
+    if (!alive) return;
     locating.value = false;
     if (status === 'complete' && result.position) {
       applyPoint(result.position.getLng(), result.position.getLat(), { pan: true });
@@ -160,6 +168,7 @@ function locateMe() {
 
 /** 地址搜索输入提示 */
 function handleSearch(value: string) {
+  const sequence = ++searchSequence;
   searchKeyword.value = value;
   if (!autoCompleteRef.value || !value.trim()) {
     searchOptions.value = [];
@@ -167,6 +176,7 @@ function handleSearch(value: string) {
   }
 
   autoCompleteRef.value.search(value, (status: string, result: any) => {
+    if (!alive || sequence !== searchSequence) return;
     searchOptions.value =
       status === 'complete' && result.tips
         ? result.tips
@@ -190,14 +200,25 @@ function handleSelectSuggestion(value: string) {
 
 // 外部（手填输入框 / 表单回填 / 切换详情行）改动坐标时同步地图
 watch([longitude, latitude], ([lng, lat]) => {
-  if (lng == null || lat == null || !markerRef.value) return;
+  if (lng == null || lat == null) {
+    addressSequence += 1;
+    address.value = '';
+    markerRef.value?.hide();
+    return;
+  }
+  if (!markerRef.value) return;
+  markerRef.value.show();
   const [curLng, curLat] = markerRef.value.getPosition().toArray();
   if (Math.abs(curLng - lng) < 1e-6 && Math.abs(curLat - lat) < 1e-6) return;
   markerRef.value.setPosition([lng, lat]);
   mapRef.value?.setCenter([lng, lat]);
+  reverseGeocode(lng, lat);
 });
 
 onBeforeUnmount(() => {
+  alive = false;
+  addressSequence += 1;
+  searchSequence += 1;
   resizeObserver?.disconnect();
   resizeObserver = null;
   mapRef.value?.destroy?.();

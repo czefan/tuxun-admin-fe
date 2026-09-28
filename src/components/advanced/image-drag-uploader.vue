@@ -42,7 +42,9 @@ const emit = defineEmits<{
 const fileListModel = defineModel<UploadFileInfo[]>('fileList', { required: true });
 const message = useMessage();
 const isRemovedExistImage = ref(false);
-const isCompressing = ref(false);
+const isCompressing = defineModel<boolean>('processing', { default: false });
+let uploadSequence = 0;
+let alive = true;
 
 watch(
   () => props.imageUrl,
@@ -68,6 +70,9 @@ watch(
 );
 
 onUnmounted(() => {
+  alive = false;
+  uploadSequence += 1;
+  isCompressing.value = false;
   if (objectUrl.value) {
     URL.revokeObjectURL(objectUrl.value);
     objectUrl.value = null;
@@ -82,57 +87,39 @@ const displayUrl = computed(() => {
 
 async function handleBeforeUpload(data: { file: UploadFileInfo }) {
   const rawFile = data.file.file;
-  if (!rawFile) return true;
-
-  // 1. 格式校验
-  const allowedTypes = props.accept.split(',').map(item => item.trim());
-  if (allowedTypes.length > 0 && !allowedTypes.includes(rawFile.type)) {
-    message.error('图片仅支持 jpg/png 格式');
-    return false;
-  }
-
-  // 2. 超大文件硬上限拦截（避免前端大图解码造成 OOM 卡死）
-  if (rawFile.size > props.maxSizeMb * 1024 * 1024) {
-    message.error(`图片大小不能超过 ${props.maxSizeMb}MB，请手动压缩后上传`);
-    return false;
-  }
-
-  // 3. 尺寸比例校验（过滤过于修长或过于扁平的畸形图片）
+  if (!rawFile || isCompressing.value) return false;
+  const sequence = ++uploadSequence;
+  isCompressing.value = true;
   try {
+    const allowedTypes = props.accept.split(',').map(item => item.trim());
+    if (!allowedTypes.includes(rawFile.type)) throw new Error('图片仅支持 jpg/png 格式');
+    if (rawFile.size > props.maxSizeMb * 1024 * 1024) {
+      throw new Error(`图片大小不能超过 ${props.maxSizeMb}MB，请手动压缩后上传`);
+    }
     const { width, height } = await getImageDimensions(rawFile);
-    if (width > 0 && height > 0) {
-      const ratio = width / height;
-      if (ratio < props.minAspectRatio) {
-        message.error('图片比例过于修长（宽高比不能低于 1:3），请调整后上传');
-        return false;
-      }
-      if (ratio > props.maxAspectRatio) {
-        message.error('图片比例过于扁平（宽高比不能高于 3:1），请调整后上传');
-        return false;
-      }
+    if (width <= 0 || height <= 0) throw new Error('无法读取图片尺寸，请重新选择图片');
+    const ratio = width / height;
+    if (ratio < props.minAspectRatio || ratio > props.maxAspectRatio) {
+      throw new Error(`图片宽高比应在 ${props.minAspectRatio} 到 ${props.maxAspectRatio} 之间`);
     }
-  } catch (err) {
-    console.warn('获取图片尺寸失败，跳过比例校验:', err);
-  }
-
-  // 4. 智能逼近压缩（在不超过 targetSizeMb 限制下获得最高画质与分辨率）
-  const targetBytes = props.targetSizeMb * 1024 * 1024;
-  if (rawFile.size > targetBytes) {
-    isCompressing.value = true;
-    try {
-      const compressedFile = await compressImageToTarget(rawFile, targetBytes);
-      data.file.file = compressedFile;
-    } finally {
-      isCompressing.value = false;
+    const file = await compressImageToTarget(rawFile, props.targetSizeMb * 1024 * 1024);
+    if (!alive || sequence !== uploadSequence) return false;
+    data.file.file = file;
+    isRemovedExistImage.value = false;
+    return true;
+  } catch (error) {
+    if (alive && sequence === uploadSequence) {
+      message.error(error instanceof Error ? error.message : '图片处理失败，请重新选择');
     }
+    return false;
+  } finally {
+    if (alive && sequence === uploadSequence) isCompressing.value = false;
   }
-
-  isRemovedExistImage.value = false;
-  return true;
 }
 
 function handleRemoveImage(e: Event) {
   e.stopPropagation();
+  uploadSequence += 1;
   fileListModel.value = [];
   isRemovedExistImage.value = true;
   if (objectUrl.value) {
