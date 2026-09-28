@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { toImageVM } from '@/service/contract/types';
 import {
+  NAlert,
   NButton,
   NCard,
   NForm,
@@ -50,7 +51,11 @@ watch(
 );
 
 const loading = ref(false);
+const loadError = ref(false);
+let detailSequence = 0;
+let alive = true;
 const submitting = ref(false);
+const imageProcessing = ref(false);
 const showPreview = ref(true);
 const imagePosition = ref<'top' | 'bottom'>('top');
 
@@ -100,7 +105,7 @@ watch(
       }
     }
   },
-  { deep: true }
+  { deep: true, flush: 'sync' }
 );
 
 const previewImageSrc = computed(() => {
@@ -136,25 +141,45 @@ async function loadActivities() {
 }
 
 async function loadDetail() {
-  if (!isEdit.value || !noticeId.value) return;
+  const sequence = ++detailSequence;
+  const id = noticeId.value;
+  imageFiles.value = [];
+  model.value = {
+    title: '',
+    content: '',
+    image_file: undefined,
+    image_src: '',
+    related_id: undefined,
+    remove_image: false
+  };
+  loadError.value = false;
+  loading.value = false;
+  if (!isEdit.value) return;
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    loadError.value = true;
+    return;
+  }
   loading.value = true;
   try {
-    const res = await fetchAdminAnnouncementDetail(noticeId.value);
-    if (res.data) {
-      const d = res.data;
-      model.value = {
-        title: d.title,
-        content: d.content,
-        image_file: undefined,
-        image_src: d.image ? toImageVM(d.image, 'origin').url : undefined,
-        related_id: d.related_id ?? undefined,
-        remove_image: false
-      };
+    const res = await fetchAdminAnnouncementDetail(id);
+    if (!alive || sequence !== detailSequence) return;
+    if (!res.data || res.error) {
+      loadError.value = true;
+      return;
     }
+    const d = res.data;
+    model.value = {
+      title: d.title,
+      content: d.content,
+      image_file: undefined,
+      image_src: d.image ? toImageVM(d.image, 'origin').url : undefined,
+      related_id: d.related_id ?? undefined,
+      remove_image: false
+    };
   } catch {
-    message.error('获取通知详情失败');
+    if (alive && sequence === detailSequence) loadError.value = true;
   } finally {
-    loading.value = false;
+    if (alive && sequence === detailSequence) loading.value = false;
   }
 }
 
@@ -163,6 +188,7 @@ function backToList() {
 }
 
 function handleSave() {
+  if (loading.value || loadError.value || imageProcessing.value) return;
   if (!model.value.title.trim()) {
     message.warning('请输入通知标题');
     return;
@@ -171,7 +197,7 @@ function handleSave() {
     message.warning('通知标题不能超过 20 个字');
     return;
   }
-  if (!model.value.content.trim()) {
+  if (htmlTextLength(model.value.content) === 0) {
     message.warning('请输入通知正文内容');
     return;
   }
@@ -180,18 +206,19 @@ function handleSave() {
     return;
   }
 
+  const currentRouteId = routeId.value;
   confirmAction({
     title: isEdit.value ? '确认更新通知' : '确认发布通知',
     content: isEdit.value
       ? `确认更新通知「${model.value.title.trim()}」？`
       : `确认发布通知「${model.value.title.trim()}」？`,
     positiveText: isEdit.value ? '保存修改' : '确认发布',
-    onConfirm: doSave
+    onConfirm: () => currentRouteId === routeId.value && doSave()
   });
 }
 
 async function doSave() {
-  if (submitting.value) return false;
+  if (submitting.value || imageProcessing.value || loading.value || loadError.value) return false;
 
   submitting.value = true;
   try {
@@ -256,9 +283,12 @@ async function handleDelete() {
   }
 }
 
-onMounted(() => {
-  loadActivities();
-  loadDetail();
+onMounted(loadActivities);
+watch(routeId, loadDetail, { immediate: true });
+onBeforeUnmount(() => {
+  alive = false;
+  detailSequence += 1;
+  if (localImageBlobUrl.value) URL.revokeObjectURL(localImageBlobUrl.value);
 });
 </script>
 
@@ -277,11 +307,21 @@ onMounted(() => {
         <NSpace align="center">
           <NButton @click="backToList">返回列表</NButton>
           <NButton v-if="isEdit" type="error" secondary @click="confirmRemove">删除通知</NButton>
-          <NButton type="primary" :loading="submitting" @click="handleSave">保存并发布</NButton>
+          <NButton
+            type="primary"
+            :loading="submitting"
+            :disabled="imageProcessing || loading || loadError"
+            @click="handleSave"
+          >
+            保存并发布
+          </NButton>
         </NSpace>
       </div>
     </NCard>
 
+    <NAlert v-if="loadError" type="error" title="通知详情加载失败，暂时无法编辑">
+      <NButton text @click="loadDetail">重新加载</NButton>
+    </NAlert>
     <!-- 主体左右分栏 (支持右侧折叠) -->
     <NSpin :show="loading">
       <div
@@ -325,7 +365,7 @@ onMounted(() => {
               <RichTextEditor
                 v-model:value="model.content"
                 placeholder="请输入通知详细正文内容 (最多 2000 字)..."
-                :height="300"
+                min-height="300px"
               />
             </NFormItem>
 
@@ -333,6 +373,7 @@ onMounted(() => {
               <NSpace vertical class="w-full" :size="12">
                 <ImageDragUploader
                   v-model:file-list="imageFiles"
+                  v-model:processing="imageProcessing"
                   :image-url="model.image_src"
                   width="220"
                   height="130"

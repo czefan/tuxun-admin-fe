@@ -118,6 +118,7 @@ const formModel = ref({
 });
 
 const submitting = ref(false);
+const imageProcessing = ref(false);
 
 // 详情预览弹窗
 const detailVisible = ref(false);
@@ -181,12 +182,12 @@ function openEditModal(row: PhotoReviewItem) {
 }
 
 function handleSubmit() {
-  if (!formModel.value.activity_id) {
+  if (modalType.value === 'create' && !formModel.value.activity_id) {
     message.warning('请选择所属活动');
     return;
   }
   const selectedAct = rawActivities.value.find(item => item.id === formModel.value.activity_id);
-  if (selectedAct && new Date(selectedAct.end_time).getTime() <= Date.now()) {
+  if (modalType.value === 'create' && selectedAct && new Date(selectedAct.end_time).getTime() <= Date.now()) {
     message.warning('不能为已结束的活动新增题目');
     return;
   }
@@ -203,6 +204,26 @@ function handleSubmit() {
     return;
   }
 
+  if (formModel.value.description.trim().length > 50) {
+    message.warning('题目描述不能超过 50 个字');
+    return;
+  }
+  const { longitude, latitude } = formModel.value;
+  if (
+    longitude === null ||
+    latitude === null ||
+    !Number.isFinite(longitude) ||
+    !Number.isFinite(latitude) ||
+    Math.abs(longitude) > 180 ||
+    Math.abs(latitude) > 90
+  ) {
+    message.warning('请填写有效的经纬度');
+    return;
+  }
+  if (!formModel.value.image_file && !editingImageUrl.value) {
+    message.warning('请上传题目图片');
+    return;
+  }
   const isCreate = modalType.value === 'create';
   confirmAction({
     title: isCreate ? '确认新增题目' : '确认修改题目',
@@ -215,15 +236,15 @@ function handleSubmit() {
 }
 
 async function doSubmit() {
-  if (submitting.value) return false;
+  if (submitting.value || imageProcessing.value) return false;
 
   submitting.value = true;
   try {
     if (modalType.value === 'create') {
       const res = await createAdminPhoto({
         activity_id: formModel.value.activity_id!,
-        title: formModel.value.title,
-        description: formModel.value.description,
+        title: formModel.value.title.trim(),
+        description: formModel.value.description.trim(),
         image_file: formModel.value.image_file || undefined,
         longitude: formModel.value.longitude ?? undefined,
         latitude: formModel.value.latitude ?? undefined,
@@ -242,8 +263,8 @@ async function doSubmit() {
       return false;
     } else if (modalType.value === 'edit' && currentPhotoId.value) {
       const res = await updateAdminPhoto(currentPhotoId.value, {
-        title: formModel.value.title,
-        description: formModel.value.description,
+        title: formModel.value.title.trim(),
+        description: formModel.value.description.trim(),
         image_file: formModel.value.image_file || undefined,
         longitude: formModel.value.longitude ?? undefined,
         latitude: formModel.value.latitude ?? undefined,
@@ -278,7 +299,7 @@ const columns = computed<DataTableColumns<PhotoReviewItem>>(() => [
     key: 'info',
     minWidth: 180,
     render(row) {
-      const authorId = row.author?.id ?? (row as any).user_id;
+      const authorId = row.author?.id;
       const authorText = authorId ? `用户ID：${authorId}` : '图寻官方';
       return h('div', { class: 'space-y-1' }, [
         h(
@@ -343,18 +364,16 @@ const columns = computed<DataTableColumns<PhotoReviewItem>>(() => [
   }
 ]);
 
-onMounted(async () => {
-  await loadActivities();
-  const actParam = route.query.activity_ids;
-  if (actParam) {
-    const rawIds = Array.isArray(actParam) ? actParam : [actParam];
-    const parsed = rawIds.map(v => Number(v)).filter(n => !Number.isNaN(n));
-    if (parsed.length > 0) {
-      searchParams.value.activity_ids = parsed;
-    }
-  }
-  loadData();
-});
+onMounted(loadActivities);
+watch(
+  () => route.query.activity_ids,
+  value => {
+    const rawIds = Array.isArray(value) ? value : [value];
+    searchParams.value.activity_ids = [...new Set(rawIds.map(Number).filter(id => Number.isSafeInteger(id) && id > 0))];
+    handleSearch();
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
@@ -481,9 +500,11 @@ onMounted(async () => {
             <NFormItem label="题目图片" required>
               <ImageDragUploader
                 v-model:file-list="imageFiles"
+                v-model:processing="imageProcessing"
                 :image-url="modalType === 'edit' ? editingImageUrl : null"
                 width="200"
                 height="125"
+                @remove="editingImageUrl = ''"
               />
             </NFormItem>
           </div>
@@ -504,7 +525,7 @@ onMounted(async () => {
       <template #footer>
         <div class="flex justify-end gap-3">
           <NButton @click="modalVisible = false">取消</NButton>
-          <NButton type="primary" :loading="submitting" @click="handleSubmit">确定</NButton>
+          <NButton type="primary" :loading="submitting" :disabled="imageProcessing" @click="handleSubmit">确定</NButton>
         </div>
       </template>
     </NModal>

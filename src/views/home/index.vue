@@ -109,7 +109,13 @@ function openVerifyModal() {
 
     <NGrid :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
       <NGi v-for="card in cards" :key="card.title" span="24 s:12 l:6">
-        <NCard :bordered="false" class="card-wrapper cursor-pointer" hoverable @click="routerPushByKey(card.route)">
+        <NCard
+          :bordered="false"
+          class="card-wrapper"
+          :class="card.route !== 'system_users' || authStore.isSuperAdmin ? 'cursor-pointer' : ''"
+          :hoverable="card.route !== 'system_users' || authStore.isSuperAdmin"
+          @click="(card.route !== 'system_users' || authStore.isSuperAdmin) && routerPushByKey(card.route)"
+        >
           <NStatistic :label="card.title" :value="card.value ?? '--'" />
           <p class="mb-0 mt-8px text-13px text-#888">{{ card.description }}</p>
         </NCard>

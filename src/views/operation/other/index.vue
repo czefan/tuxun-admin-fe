@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import {
   NAlert,
   NButton,
@@ -24,7 +24,10 @@ import { RICH_TEXT_MAX_TEXT, htmlTextLength, validateRichText } from '@/utils/sa
 
 const message = useMessage();
 const activeTab = ref<ContentKey>('popup');
-const loading = ref(false);
+const loading = ref<Record<ContentKey, boolean>>({ popup: false, score_rules: false, help: false });
+const loaded = ref<Record<ContentKey, boolean>>({ popup: false, score_rules: false, help: false });
+const loadErrors = ref<Record<ContentKey, boolean>>({ popup: false, score_rules: false, help: false });
+let alive = true;
 const saving = ref(false);
 
 /** 三个内容位只有文案 / 限额 / 配色不同，结构完全一致，统一由这张表驱动 */
@@ -96,21 +99,27 @@ async function loadNoticeOptions() {
 }
 
 async function loadContent(key: ContentKey) {
-  loading.value = true;
+  if (loading.value[key]) return;
+  loading.value[key] = true;
+  loadErrors.value[key] = false;
   try {
     const res = await fetchContentBlock(key);
+    if (!alive) return;
     if (res.data) {
       blocks.value[key] = res.data;
+      loaded.value[key] = true;
+    } else {
+      loadErrors.value[key] = true;
     }
   } catch {
-    message.error(`获取 [${key}] 内容位失败`);
+    if (alive) loadErrors.value[key] = true;
   } finally {
-    loading.value = false;
+    if (alive) loading.value[key] = false;
   }
 }
 
 function confirmSave(block: BlockConfig) {
-  if (saving.value || isOverLimit(block)) return;
+  if (saving.value || loading.value[block.key] || !loaded.value[block.key] || isOverLimit(block)) return;
   confirmAction({
     title: '确认保存并发布',
     content: `确认保存并发布【${block.label}】配置？发布后立即对客户端生效。`,
@@ -120,16 +129,17 @@ function confirmSave(block: BlockConfig) {
 }
 
 async function handleSave(block: BlockConfig) {
+  if (saving.value || loading.value[block.key] || !loaded.value[block.key]) return false;
   const target = blocks.value[block.key];
 
-  if (!target.content.trim()) {
+  if (htmlTextLength(target.content) === 0) {
     message.warning('正文内容不能为空');
-    return;
+    return false;
   }
   const limitError = validateRichText(target.content, block.maxText);
   if (limitError) {
     message.error(limitError);
-    return;
+    return false;
   }
 
   saving.value = true;
@@ -141,23 +151,29 @@ async function handleSave(block: BlockConfig) {
     if (res.data) {
       message.success('保存并发布成功');
       await loadContent(block.key);
+      return true;
     }
+    return false;
   } catch {
     message.error('保存失败');
+    return false;
   } finally {
     saving.value = false;
   }
 }
 
-/** 切走再切回时重新拉一次，避免多人同时编辑时展示过期的 version */
+/** 已加载的标签保留草稿；加载失败的标签允许再次打开时重试。 */
 function handleTabChange(value: string) {
   activeTab.value = value as ContentKey;
-  loadContent(activeTab.value);
+  if (!loaded.value[activeTab.value]) loadContent(activeTab.value);
 }
 
 onMounted(() => {
   loadNoticeOptions();
   BLOCKS.forEach(block => loadContent(block.key));
+});
+onBeforeUnmount(() => {
+  alive = false;
 });
 </script>
 
@@ -175,9 +191,12 @@ onMounted(() => {
     <NCard :bordered="false" class="card-wrapper">
       <NTabs v-model:value="activeTab" type="line" animated @update:value="handleTabChange">
         <NTabPane v-for="block in BLOCKS" :key="block.key" :name="block.key" :tab="block.label">
-          <NSpin :show="loading">
+          <NSpin :show="loading[block.key]">
             <NCard :title="`编辑${block.label}`" :bordered="false" class="card-wrapper">
               <NSpace vertical :size="16">
+                <NAlert v-if="loadErrors[block.key]" type="error" title="内容加载失败">
+                  <NButton text @click="loadContent(block.key)">重新加载</NButton>
+                </NAlert>
                 <NAlert :type="block.alertType" :bordered="false">{{ block.alertText }}</NAlert>
 
                 <div class="flex items-center justify-between">
@@ -187,7 +206,12 @@ onMounted(() => {
                       最近修改: {{ formatDateTime(blocks[block.key].updated_at) }}
                     </span>
                   </NSpace>
-                  <NButton type="primary" :loading="saving" :disabled="isOverLimit(block)" @click="confirmSave(block)">
+                  <NButton
+                    type="primary"
+                    :loading="saving"
+                    :disabled="isOverLimit(block) || loading[block.key] || !loaded[block.key]"
+                    @click="confirmSave(block)"
+                  >
                     保存并发布
                   </NButton>
                 </div>
@@ -218,6 +242,7 @@ onMounted(() => {
                     </template>
                     <RichTextEditor
                       v-model:value="blocks[block.key].content"
+                      :disabled="saving || loading[block.key] || !loaded[block.key]"
                       :placeholder="block.placeholder"
                       :min-height="block.minHeight"
                     />

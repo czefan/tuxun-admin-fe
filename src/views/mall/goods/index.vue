@@ -49,6 +49,7 @@ const formModalVisible = ref(false);
 const formModalType = ref<'create' | 'edit'>('create');
 const currentGoodId = ref<number | null>(null);
 const formSubmitting = ref(false);
+const imageProcessing = ref(false);
 
 const imageFiles = ref<UploadFileInfo[]>([]);
 const imageUrl = ref('');
@@ -141,7 +142,7 @@ function handleFormSubmit() {
 }
 
 async function doFormSubmit() {
-  if (formSubmitting.value) return false;
+  if (formSubmitting.value || imageProcessing.value) return false;
 
   const payload: GoodFormPayload = {
     name: goodFormModel.value.name.trim(),
@@ -427,14 +428,23 @@ const columns = computed<DataTableColumns<GoodListItem>>(() => [
           />
         </NFormItem>
         <NFormItem label="奖品图片" required>
-          <ImageDragUploader v-model:file-list="imageFiles" :image-url="imageUrl" width="160" height="160" />
+          <ImageDragUploader
+            v-model:file-list="imageFiles"
+            v-model:processing="imageProcessing"
+            :image-url="imageUrl"
+            width="160"
+            height="160"
+            @remove="imageUrl = ''"
+          />
         </NFormItem>
       </NForm>
 
       <template #footer>
         <NSpace justify="end">
           <NButton @click="formModalVisible = false">取消</NButton>
-          <NButton type="primary" :loading="formSubmitting" @click="handleFormSubmit">确定</NButton>
+          <NButton type="primary" :loading="formSubmitting" :disabled="imageProcessing" @click="handleFormSubmit">
+            确定
+          </NButton>
         </NSpace>
       </template>
     </NModal>

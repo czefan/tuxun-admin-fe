@@ -62,7 +62,12 @@ function openQuestions(id: number) {
 const modalVisible = ref(false);
 const modalType = ref<'create' | 'edit'>('create');
 const currentActivityId = ref<number | null>(null);
+const originalEndTime = ref<number | null>(null);
+const timeLocked = computed(
+  () => modalType.value === 'edit' && originalEndTime.value !== null && originalEndTime.value <= Date.now()
+);
 const submitting = ref(false);
+const imageProcessing = ref(false);
 
 const coverFiles = ref<UploadFileInfo[]>([]);
 const coverUrl = ref('');
@@ -77,6 +82,7 @@ const formModel = ref({
 function openCreateModal() {
   modalType.value = 'create';
   currentActivityId.value = null;
+  originalEndTime.value = null;
   coverUrl.value = '';
   coverFiles.value = [];
   formModel.value = {
@@ -91,6 +97,7 @@ function openCreateModal() {
 function openEditModal(row: ActivityListItem) {
   modalType.value = 'edit';
   currentActivityId.value = row.id;
+  originalEndTime.value = dayjs(row.end_time).valueOf();
   coverUrl.value = toImageVM(row.cover_image, 'origin').url;
   coverFiles.value = [];
   formModel.value = {
@@ -137,13 +144,13 @@ function handleSubmit() {
 }
 
 async function doSubmit() {
-  if (submitting.value) return false;
+  if (submitting.value || imageProcessing.value) return false;
 
-  const payload: ActivityFormPayload = {
+  const payload: Partial<ActivityFormPayload> = {
     title: formModel.value.title.trim(),
     description: formModel.value.description.trim(),
-    start_time: dayjs(formModel.value.startTime).format('YYYY-MM-DDTHH:mm:ssZ'),
-    end_time: dayjs(formModel.value.endTime).format('YYYY-MM-DDTHH:mm:ssZ'),
+    start_time: timeLocked.value ? undefined : dayjs(formModel.value.startTime).format('YYYY-MM-DDTHH:mm:ssZ'),
+    end_time: timeLocked.value ? undefined : dayjs(formModel.value.endTime).format('YYYY-MM-DDTHH:mm:ssZ'),
     cover_file: coverFiles.value[0]?.file || undefined
   };
 
@@ -151,7 +158,7 @@ async function doSubmit() {
   try {
     const res =
       modalType.value === 'create'
-        ? await createActivity(payload)
+        ? await createActivity(payload as ActivityFormPayload)
         : await updateActivity(currentActivityId.value!, payload);
 
     if (res.data) {
@@ -288,20 +295,39 @@ const columns = computed<DataTableColumns<ActivityListItem>>(() => [
           />
         </NFormItem>
         <NFormItem label="活动封面" required>
-          <ImageDragUploader v-model:file-list="coverFiles" :image-url="coverUrl" width="220" height="130" />
+          <ImageDragUploader
+            v-model:file-list="coverFiles"
+            v-model:processing="imageProcessing"
+            :image-url="coverUrl"
+            width="220"
+            height="130"
+            @remove="coverUrl = ''"
+          />
         </NFormItem>
         <NFormItem label="开始时间" required>
-          <NDatePicker v-model:value="formModel.startTime" type="datetime" clearable class="w-full" />
+          <NDatePicker
+            v-model:value="formModel.startTime"
+            :disabled="timeLocked"
+            type="datetime"
+            clearable
+            class="w-full"
+          />
         </NFormItem>
         <NFormItem label="结束时间" required>
-          <NDatePicker v-model:value="formModel.endTime" type="datetime" clearable class="w-full" />
+          <NDatePicker
+            v-model:value="formModel.endTime"
+            :disabled="timeLocked"
+            type="datetime"
+            clearable
+            class="w-full"
+          />
         </NFormItem>
       </NForm>
 
       <template #footer>
         <NSpace justify="end">
           <NButton @click="modalVisible = false">取消</NButton>
-          <NButton type="primary" :loading="submitting" @click="handleSubmit">确定</NButton>
+          <NButton type="primary" :loading="submitting" :disabled="imageProcessing" @click="handleSubmit">确定</NButton>
         </NSpace>
       </template>
     </NModal>
