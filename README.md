@@ -13,13 +13,17 @@
 - **样式引擎**：UnoCSS (原子化 CSS)
 - **网络层封装**：基于 `@sa/axios` 封装 Flat 请求
 - **Mock 服务**：MSW (Mock Service Worker 2.x)
-- **包管理工具**：pnpm (>= 10.5.0)
+- **包管理工具**：pnpm 12.6.0（通过 `packageManager` 固定，优先采用验证通过的最新稳定版）
 
 ---
 
 ## 🚀 开发命令与工作流
 
 ### 1. 基础命令
+
+推荐使用 Node.js 24 LTS（>=24.15.0）；也支持 Node.js 22.22.2+。
+本地与 CI 使用同一版本 pnpm 12.6.0。默认安装源为 `https://registry.npmmirror.com`，
+安全审计通过 `pnpm audit:deps` 单独请求 npm 官方源（镜像未提供所需审计接口）。
 
 - **安装依赖**：
 
@@ -43,13 +47,24 @@
 
   ```bash
   pnpm build
+  pnpm preview # 使用同一 prod 环境，预览 /admin/ 子路径
   ```
 
-- **全量静态检查 (契约校验 + 代码规范 + TS 类型)**：
+- **完整检查 (契约校验 + 代码规范 + TS 类型 + 回归测试)**：
 
   ```bash
   pnpm check
   ```
+
+浏览器测试首次运行前安装 Chromium：
+
+```bash
+pnpm exec playwright install chromium
+# Linux 缺少浏览器动态库时：pnpm exec playwright install --with-deps chromium
+```
+
+浏览器测试自动启动独立的 Mock 服务（127.0.0.1:9528），不需要真实账号。
+Mock 默认未登录，可用登录页的 L1/L2/L3 按钮验证完整授权回调和权限分支。
 
 ### 2. 自动路由与契约类型生成
 
@@ -69,7 +84,7 @@
 
 项目配置了 `simple-git-hooks` 作为 Git Hooks 工具，包含以下校验：
 
-- **提交前校验 (Pre-commit)**：在执行 `git commit` 时，系统自动运行 `pnpm typecheck && pnpm lint && pnpm fmt` 检查代码规范与类型。
+- **提交前校验 (Pre-commit)**：在执行 `git commit` 时，系统自动运行 `pnpm check`。检查不改写源码；需要修复时显式执行 `pnpm lint:fix` 和 `pnpm fmt`。
 - **提交信息校验 (Commit-msg)**：通过 `pnpm sa git-commit-verify` 验证 Commit Message 规范。
 
 手动检查命令：
@@ -77,8 +92,12 @@
 ```bash
 pnpm check:contract # 仅进行契约校验
 pnpm typecheck      # 仅进行 Vue/TS 类型检查
-pnpm lint           # 运行代码规范检测与修复
+pnpm lint           # 只检查代码规范
+pnpm lint:fix       # 自动修复可修复的规范问题
 pnpm fmt            # 运行代码格式化
+pnpm test           # Vitest 回归测试
+pnpm test:e2e       # Chromium + MSW 浏览器测试
+pnpm audit:deps          # 通过 npm 官方源查询依赖安全公告
 ```
 
 ---
@@ -115,7 +134,7 @@ VITE_OAUTH_CLIENT_ID=tu_xun                      # OAuth Client ID（与 tuxun-f
 
 本地登录前置条件：
 
-- 回调页 `http://localhost:9527/login/callback` 需在 tz-oauth 与后端回调白名单登记（生产为对应域名）；未登记时可用 `pnpm dev:mock` 或登录页「开发测试登录」面板验证。
+- 回调页 `http://localhost:9527/login/callback` 需在 tz-oauth 与后端回调白名单登记（生产为 `https://对应域名/admin/login/callback`）；未登记时可用 `pnpm dev:mock` 或登录页「开发测试登录」面板验证。
 - 生产为 history 路由 SPA，需配 `try_files ... /index.html` 回退，否则认证回跳 `/login/callback` 会 404。参考 [deploy/nginx.conf.example](deploy/nginx.conf.example)。
 
 ### 2. 接口契约规范
@@ -173,3 +192,7 @@ interface ApiResponse<T> {
   - **核销记录**：兑换记录查询与扫码核销。
 - **系统管理 (System)**：
   - **用户管理**：用户查询与账号封禁/解封。
+
+## 项目检查记录
+
+本轮发现、修复、验证范围和后续建议见 [项目检查记录](docs/project-audit.md)。

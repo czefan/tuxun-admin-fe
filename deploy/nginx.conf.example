@@ -1,6 +1,6 @@
 # 图寻后台管理端 (tuxun-admin-fe) Nginx 部署参考配置
 # SPA 模式 —— VITE_ROUTER_HISTORY_MODE=history，必须配置 try_files 回退 index.html，
-# 否则除首次加载外的任意路径（含 OAuth 认证服务回跳整页加载 /login/callback）都会 404，
+# 否则除首次加载外的任意路径（含 OAuth 认证服务回跳整页加载 /admin/login/callback）都会 404，
 # 登录链路会断在最后一步。
 
 server {
@@ -15,20 +15,29 @@ server {
     gzip_types text/plain text/css application/javascript application/json image/svg+xml;
 
     # History 路由 fallback 关键配置。
-    # 认证服务回跳是对 /login/callback 的整页加载，命中此 location 回退到 index.html；
+    # 认证服务回跳是对 /admin/login/callback 的整页加载，命中此 location 回退到 index.html；
     # 若缺少 try_files，回调页整页刷新会 404，登录无法完成。
-    location / {
-        try_files $uri $uri/ /index.html;
+    location = /admin {
+        return 308 /admin/;
     }
 
-    # index.html 绝不能缓存：/assets/ 是内容 hash + 强缓存，
+    # 对应 .env.prod 的 VITE_BASE_URL=/admin/；alias 指向 dist 本身。
+    location /admin/ {
+        alias /var/www/tuxun-admin-fe/dist/;
+        try_files $uri $uri/ /admin/index.html;
+    }
+
+    # index.html 绝不能缓存：/admin/assets/ 是内容 hash + 强缓存，
     # 一旦 index.html 被缓存，用户会一直加载旧版本的 assets 引用
-    location = /index.html {
+    location = /admin/index.html {
+        alias /var/www/tuxun-admin-fe/dist/index.html;
         add_header Cache-Control "no-cache, must-revalidate";
     }
 
     # 静态资源强缓存
-    location /assets/ {
+    location /admin/assets/ {
+        alias /var/www/tuxun-admin-fe/dist/assets/;
+        try_files $uri =404;
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
