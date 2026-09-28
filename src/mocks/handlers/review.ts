@@ -15,6 +15,7 @@ export const reviewHandlers = [
     const status = url.searchParams.get('status');
     const keyword = (url.searchParams.get('keyword') || '').toLowerCase().trim();
     const activityIds = url.searchParams.getAll('activity_ids').map(Number).filter(Boolean);
+    const userKeyword = (url.searchParams.get('user_keyword') || '').toLowerCase().trim();
     const solvedStr = url.searchParams.get('solved');
     const sortBy = url.searchParams.get('sort_by') || 'created_at';
 
@@ -24,6 +25,11 @@ export const reviewHandlers = [
     }
     if (activityIds.length > 0) {
       filtered = filtered.filter(item => activityIds.includes(item.activity?.id || 101));
+    }
+    if (userKeyword) {
+      filtered = filtered.filter(
+        item => String(item.author.id).includes(userKeyword) || item.author.nickname.toLowerCase().includes(userKeyword)
+      );
     }
     if (solvedStr === 'true') {
       filtered = filtered.filter(item => (item.solves_count ?? (item.solved ? 1 : 0)) > 0);

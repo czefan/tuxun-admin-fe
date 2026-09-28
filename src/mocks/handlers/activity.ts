@@ -35,14 +35,15 @@ export const activityHandlers = [
     const status = url.searchParams.get('status');
     const keyword = (url.searchParams.get('keyword') || '').trim().slice(0, 50);
 
-    const now = new Date().toISOString();
+    const now = Date.now();
 
     let filtered = mockDb.activities;
     if (status) {
       filtered = filtered.filter(item => {
-        if (status === 'not_started') return now < item.start_time;
-        if (status === 'active') return item.start_time <= now && now < item.end_time;
-        if (status === 'ended') return now >= item.end_time;
+        if (status === 'not_started') return now < new Date(item.start_time).getTime();
+        if (status === 'active')
+          return new Date(item.start_time).getTime() <= now && now < new Date(item.end_time).getTime();
+        if (status === 'ended') return now >= new Date(item.end_time).getTime();
         return true;
       });
     }

@@ -6,7 +6,7 @@ export async function enableMocking() {
   const { worker } = await import('./browser');
   await worker.start({
     onUnhandledRequest(request, print) {
-      if (request.url.includes('/api/')) {
+      if (new URL(request.url).pathname.startsWith('/api/')) {
         print.error();
         return;
       }

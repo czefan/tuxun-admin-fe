@@ -76,6 +76,8 @@ export const noticeHandlers = [
 
   /** 管理端：通知详情（含 read_count，读取不标记已读） */
   http.get('/api/admin/announcements/:id', ({ params }) => {
+    const authError = checkAdminAuth(2);
+    if (authError) return authError;
     const id = Number(params.id);
     const notice = mockDb.notices.find(item => item.id === id);
     if (!notice) return mockError('公告不存在', 5, 404);

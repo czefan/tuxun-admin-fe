@@ -139,20 +139,6 @@ export interface MockContentBlock {
   updated_at: string | null;
 }
 
-const defaultSession: MockUserSession = {
-  id: 1,
-  netid: '2026000001',
-  username: '张超级',
-  nickname: '图寻大导师',
-  avatar: 'https://picsum.photos/200?random=admin',
-  score_count: 9999,
-  level: 3,
-  status: 'active',
-  session_id: 'mock-session-1',
-  nickname_edits_remaining: 3,
-  avatar_edits_remaining: 1
-};
-
 function makeMedia(seed: string | number, w = 800, h = 600): Media {
   const str = String(seed);
   return {
@@ -197,7 +183,7 @@ function makeUser(id: number, nickname: string): UserSummary {
 }
 
 class MockDatabase {
-  session: MockUserSession | null = { ...defaultSession };
+  session: MockUserSession | null = null;
 
   users: MockUserInfo[] = [
     {
