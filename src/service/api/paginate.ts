@@ -6,9 +6,7 @@ export const MAX_PAGE_SIZE = 20;
 /** 兜底页数，避免后端 total 异常时把请求打爆；对应最多 200 条 */
 const MAX_PAGES = 10;
 
-type ListFetcher<T> = (
-  params: PageParams
-) => Promise<{ data?: PageResult<T> | null; error?: unknown } | { data: any; error: any }>;
+type ListFetcher<T> = (params: PageParams) => Promise<{ data?: PageResult<T> | null; error?: unknown }>;
 
 /**
  * 逐页取完一个列表接口。
@@ -25,12 +23,17 @@ export async function fetchAllPages<T>(fetcher: ListFetcher<T>): Promise<{ list:
     // 逐页串行：下一页要不要发取决于上一页的结果
     // eslint-disable-next-line no-await-in-loop
     const response = await fetcher({ page, page_size: MAX_PAGE_SIZE });
-    if (response.error) break;
+    if (response.error) throw response.error;
 
-    const pageList = response.data?.list ?? [];
+    if (!response.data || !Array.isArray(response.data.list)) {
+      throw new Error('列表返回数据异常');
+    }
+
+    const pageList = response.data.list;
     list.push(...pageList);
 
-    const total = response.data?.total ?? 0;
+    const total = response.data.total;
+    if (!Number.isSafeInteger(total) || total < 0) throw new Error('列表总数异常');
     if (pageList.length < MAX_PAGE_SIZE || list.length >= total) {
       return { list, truncated: false };
     }

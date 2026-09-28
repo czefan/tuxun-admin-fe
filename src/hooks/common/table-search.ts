@@ -1,10 +1,14 @@
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
+import { jsonClone } from '@sa/utils';
+import { getErrorText } from '@/utils/error';
+import { MAX_PAGE_SIZE } from '@/service/api/paginate';
+import type { PageResult } from '@/service/api/types';
 
-export interface UseTableSearchOptions<T, P extends Record<string, any>> {
+export interface UseTableSearchOptions<T, P extends Record<string, unknown>> {
   /** 接口查询方法，需要返回包含 list 和 total 的数据结构 */
   fetchApi: (
     params: P & { page: number; page_size: number }
-  ) => Promise<{ data?: { list?: T[]; total?: number } | null; error?: any } | any>;
+  ) => Promise<{ data?: PageResult<T> | null; error?: unknown }>;
   /** 初始查询参数 */
   initialParams: P;
   /** 默认页码 */
@@ -15,14 +19,15 @@ export interface UseTableSearchOptions<T, P extends Record<string, any>> {
   autoFetch?: boolean;
 }
 
-export function useTableSearch<T, P extends Record<string, any>>(options: UseTableSearchOptions<T, P>) {
+export function useTableSearch<T, P extends Record<string, unknown>>(options: UseTableSearchOptions<T, P>) {
   const { fetchApi, initialParams, defaultPage = 1, defaultPageSize = 10, autoFetch = true } = options;
 
-  const searchParams = ref<P>({ ...initialParams });
-  const page = ref(defaultPage);
-  const pageSize = ref(defaultPageSize);
+  const defaults = jsonClone(initialParams);
+  const searchParams = ref<P>(jsonClone(defaults));
+  const page = ref(Math.max(1, Math.floor(defaultPage) || 1));
+  const pageSize = ref(Math.min(MAX_PAGE_SIZE, Math.max(1, Math.floor(defaultPageSize) || 10)));
   const total = ref(0);
-  const rows = ref<T[]>([]);
+  const rows = shallowRef<T[]>([]);
   const loading = ref(false);
   const loadError = ref(false);
   const errorMessage = ref('');
@@ -31,6 +36,7 @@ export function useTableSearch<T, P extends Record<string, any>>(options: UseTab
   let alive = true;
 
   async function loadData() {
+    if (!alive) return;
     const sequence = ++requestSequence;
     loading.value = true;
     loadError.value = false;
@@ -38,7 +44,7 @@ export function useTableSearch<T, P extends Record<string, any>>(options: UseTab
 
     try {
       const response = await fetchApi({
-        ...searchParams.value,
+        ...(searchParams.value as P),
         page: page.value,
         page_size: pageSize.value
       });
@@ -49,24 +55,27 @@ export function useTableSearch<T, P extends Record<string, any>>(options: UseTab
         loadError.value = true;
         rows.value = [];
         total.value = 0;
-        const errObj = response.error;
-        const msg = errObj?.message || errObj?.msg || errObj?.response?.data?.message || '';
-        const code = errObj?.code || errObj?.status || errObj?.response?.status;
-        if (code === 403 || code === '403' || msg.includes('权限') || msg.includes('无权')) {
-          errorMessage.value = msg || '权限不足，无法查看此列表';
-        } else {
-          errorMessage.value = msg;
+        errorMessage.value = getErrorText(response.error, '列表加载失败，请重试');
+      } else {
+        const result = response?.data;
+        if (!result || !Array.isArray(result.list) || !Number.isSafeInteger(result.total) || result.total < 0) {
+          throw new Error('列表返回数据异常，请重试');
         }
-      } else if (response?.data) {
-        rows.value = response.data.list || [];
-        total.value = response.data.total || 0;
+        const lastPage = Math.max(1, Math.ceil(result.total / pageSize.value));
+        if (page.value > lastPage) {
+          page.value = lastPage;
+          await loadData();
+          return;
+        }
+        rows.value = result.list;
+        total.value = result.total;
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (!alive || sequence !== requestSequence) return;
       loadError.value = true;
       rows.value = [];
       total.value = 0;
-      errorMessage.value = err?.message || '';
+      errorMessage.value = getErrorText(err, '列表加载失败，请重试');
     } finally {
       if (alive && sequence === requestSequence) {
         loading.value = false;
@@ -76,24 +85,24 @@ export function useTableSearch<T, P extends Record<string, any>>(options: UseTab
 
   function handleSearch() {
     page.value = 1;
-    loadData();
+    return loadData();
   }
 
   function handleReset() {
-    searchParams.value = { ...initialParams };
+    searchParams.value = jsonClone(defaults);
     page.value = 1;
-    loadData();
+    return loadData();
   }
 
   function handlePageChange(val: number) {
-    page.value = val;
-    loadData();
+    page.value = Math.max(1, Math.floor(val) || 1);
+    return loadData();
   }
 
   function handlePageSizeChange(val: number) {
-    pageSize.value = val;
+    pageSize.value = Math.min(MAX_PAGE_SIZE, Math.max(1, Math.floor(val) || 10));
     page.value = 1;
-    loadData();
+    return loadData();
   }
 
   const pagination = computed(() => ({
@@ -102,7 +111,6 @@ export function useTableSearch<T, P extends Record<string, any>>(options: UseTab
     itemCount: total.value,
     pageSizes: [10, 20],
     showSizePicker: true,
-    onChange: handlePageChange,
     onUpdatePage: handlePageChange,
     onUpdatePageSize: handlePageSizeChange
   }));

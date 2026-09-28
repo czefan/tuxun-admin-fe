@@ -50,7 +50,7 @@ export function createAxiosConfig(config?: Partial<CreateAxiosDefaults>) {
     },
     validateStatus: isHttpSuccess,
     paramsSerializer: params => {
-      return stringify(params);
+      return stringify(params, { arrayFormat: 'repeat', skipNulls: true });
     }
   };
 

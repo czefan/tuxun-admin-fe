@@ -158,7 +158,7 @@ function renderUserCell(user?: { avatar?: string; nickname?: string; id?: number
         round: true,
         size: 24,
         src: avatarUrl,
-        fallbackSrc: '/favicon.svg',
+        fallbackSrc: `${import.meta.env.BASE_URL}favicon.svg`,
         style: 'flex-shrink: 0; align-self: center;'
       }),
       h('span', { class: 'line-clamp-2 font-medium text-13px text-gray-900 dark:text-gray-100 leading-snug' }, nickname)
@@ -211,7 +211,7 @@ export function renderUserInline(
       round: true,
       size: 'small',
       src: avatarUrl,
-      fallbackSrc: '/favicon.svg'
+      fallbackSrc: `${import.meta.env.BASE_URL}favicon.svg`
     }),
     h('span', `${nickname} (ID: ${userId})`)
   ]);
@@ -228,7 +228,7 @@ export function renderCoordsInline(
   const lng = location?.longitude;
   const lat = location?.latitude;
 
-  if (!lng || !lat) {
+  if (lng == null || lat == null || !Number.isFinite(lng) || !Number.isFinite(lat)) {
     return h('span', { class: 'text-gray-400 text-14px' }, '无坐标信息');
   }
 
