@@ -209,7 +209,7 @@ OpenAPI 中的公共结构统一定义在 `components.schemas`，各接口通过
 | end_time    | string(date-time) | 必返非空的带时区结束时间，且必须晚于 `start_time` |
 | photo_count | int               | 活动包含的题目数                                  |
 
-活动契约不返回 `status` 或 `is_active` 等派生状态字段。后端必须使用服务器当前时间按以下唯一规则进行列表归类和写操作校验：
+活动契约不返回 `status` 等派生状态字段。后端通过删除接口（`DELETE /api/admin/activity/{id}`）支持管理员删除活动，删除后活动在客户端列表不再展示，也不允许投稿与作答，但历史关联数据保留。后端使用服务器当前时间按以下唯一规则进行列表归类和写操作校验：
 
 - `now < start_time`（`status=not_started`）：仅在管理端活动列表可见，不出现在客户端活动列表；题目不向客户端下发，也不允许投稿和作答；
 - `start_time <= now < end_time`（`status=active`）：客户端与管理端均可见，允许投稿和作答；
@@ -467,7 +467,7 @@ GET /api/activity
 
 **权限**：无
 
-**说明**：客户端活动列表，**只返回进行中（`active`）和已结束（`ended`）活动，不含未开始活动**——未开始活动仅在管理端活动列表可见，其题目也不向客户端下发、不允许投稿作答。接口不返回状态字段，客户端按 `start_time` / `end_time` 与当前时间判断；`status` 筛选由后端按服务器当前时间计算。默认按 `start_time` 倒序、`id` 倒序返回，保证稳定分页。活动结束时不迁移题目，题目始终保留原 `activity_id`。多个筛选条件按 AND 组合。
+**说明**：客户端活动列表，**只返回进行中（`active`）和已结束（`ended`）活动，不含未开始活动与已删除活动**——未开始活动仅在管理端活动列表可见，其题目也不向客户端下发、不允许投稿作答。接口不返回状态字段，客户端按 `start_time` / `end_time` 与当前时间判断；`status` 筛选由后端按服务器当前时间计算。默认按「进行中优先」排序：当前时间早于 `end_time` 的活动排在最前，已结束的排其后；同一优先级内按 `start_time` 倒序、`id` 倒序返回，保证稳定分页。活动结束时不迁移题目，题目始终保留原 `activity_id`。多个筛选条件按 AND 组合。
 
 **请求参数（Query）**
 
@@ -2118,7 +2118,7 @@ POST /api/admin/activity
 
 **Content-Type**：`multipart/form-data`
 
-**时间规则**：接口不接收 `status` 或 `is_active` 字段。活动是否进行中完全由 `start_time <= now < end_time` 判定。允许多个活动的时间范围重叠并同时进行。
+**时间规则**：接口不接收 `status` 字段。活动是否进行中完全由 `start_time <= now < end_time` 判定。允许多个活动的时间范围重叠并同时进行。
 
 **请求参数**
 
@@ -2173,6 +2173,27 @@ PUT /api/admin/activity/{id}
 {
   "success": true,
   "resp": { "id": 1, "status": "success" },
+  "message": "",
+  "code": 0
+}
+```
+
+#### 删除活动
+
+```
+DELETE /api/admin/activity/{id}
+```
+
+**权限**：管理员（Level ≥ 2）
+
+**说明**：`{id}` 为活动 ID。删除活动（软删除，后端置标记位），**不删除数据**：活动及其关联的题目、答题、评论、点赞与互动消息均保留。删除后活动不再展示在客户端列表，也不允许新投稿与作答。活动不存在返回 `400`、`code=5`；已删除则幂等返回成功。
+
+**返回** `200`
+
+```json
+{
+  "success": true,
+  "resp": { "id": 1, "status": "deleted" },
   "message": "",
   "code": 0
 }

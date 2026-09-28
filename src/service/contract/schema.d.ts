@@ -713,7 +713,7 @@ export interface paths {
     };
     /**
      * 活动列表
-     * @description 客户端活动列表，只返回进行中（active）和已结束（ended）活动，不含未开始活动——未开始活动仅在管理端活动列表可见，其题目也不向客户端下发、不允许投稿作答。接口不返回状态字段，客户端按 start_time / end_time 与当前时间判断；status 筛选由后端按服务器当前时间计算。默认按 start_time 倒序、id 倒序返回，保证稳定分页。多个筛选条件按 AND 组合。
+     * @description 客户端活动列表，只返回进行中（active）和已结束（ended）活动，不含未开始活动——未开始活动仅在管理端活动列表可见，其题目也不向客户端下发、不允许投稿作答。接口不返回状态字段，客户端按 start_time / end_time 与当前时间判断；status 筛选由后端按服务器当前时间计算。默认按「进行中优先」排序：当前时间早于 end_time 的活动排在最前，已结束的排其后；同一优先级内按 start_time 倒序、id 倒序返回，保证稳定分页。多个筛选条件按 AND 组合。
      */
     get: operations['listActivities'];
     put?: never;
@@ -890,7 +890,11 @@ export interface paths {
      */
     put: operations['adminUpdateActivity'];
     post?: never;
-    delete?: never;
+    /**
+     * 删除活动
+     * @description {id} 为活动 ID。删除活动（软删除，后端置标记位，不删除数据），关联题目/答题/评论/点赞/互动消息均保留。删除后活动不再展示在客户端列表，也不允许新投稿与作答。活动不存在返回 400、code=5；已删除则幂等返回成功。
+     */
+    delete: operations['adminDeleteActivity'];
     options?: never;
     head?: never;
     patch?: never;
@@ -5639,6 +5643,64 @@ export interface operations {
       };
       /** @description 活动不存在 */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StandardErrorResponse'];
+        };
+      };
+    };
+  };
+  adminDeleteActivity: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        /** @description 活动 ID */
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description 成功 */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SuccessResponseBase'] & {
+            resp: components['schemas']['IdResult'] & {
+              /**
+               * @example deleted
+               * @enum {string}
+               */
+              status: 'deleted';
+            };
+          };
+        };
+      };
+      /** @description 活动不存在或请求参数无效 */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StandardErrorResponse'];
+        };
+      };
+      /** @description 未登录 */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StandardErrorResponse'];
+        };
+      };
+      /** @description 权限不足 */
+      403: {
         headers: {
           [name: string]: unknown;
         };
